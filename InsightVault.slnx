@@ -1,3 +1,8 @@
 <Solution>
   <Project Path="src/InsightVault.Api/InsightVault.Api.csproj" />
+  <Project Path="src/InsightVault.Application/InsightVault.Application.csproj" />
+  <Project Path="src/InsightVault.Domain/InsightVault.Domain.csproj" />
+  <Project Path="src/InsightVault.Infrastructure/InsightVault.Infrastructure.csproj" />
+  <Project Path="src/insightvault.client/insightvault.client.esproj" />
+  <Project Path="tests/InsightVault.Tests/InsightVault.Tests.csproj" />
 </Solution>
