@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using InsightVault.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
-namespace InsightVault.Infrastructure.Persistence
+namespace InsightVault.Infrastructure.Persistence;
+
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
 {
-    internal class ApplicationDbContext
+    public DbSet<Document> Documents => Set<Document>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 }

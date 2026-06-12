@@ -10,4 +10,8 @@
     <Folder Include="Features\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\InsightVault.Domain\InsightVault.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

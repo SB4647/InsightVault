@@ -1,122 +1,140 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import './App.css'
+import { getDocuments, uploadDocument } from './api/documents'
+import type { DocumentDto } from './api/documents'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [documents, setDocuments] = useState<DocumentDto[]>([])
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadDocuments()
+  }, [])
+
+  async function loadDocuments() {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      setDocuments(await getDocuments())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load documents.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!selectedFile) {
+      setError('Choose a document before uploading.')
+      return
+    }
+
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const uploadedDocument = await uploadDocument(selectedFile)
+      setDocuments((current) => [uploadedDocument, ...current])
+      setSelectedFile(null)
+      event.currentTarget.reset()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload document.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <main className="app-shell">
+      <section className="page-header">
+        <p className="eyebrow">InsightVault</p>
+        <h1>Document Library</h1>
+        <p>
+          Upload source documents and keep their file metadata available for the
+          processing, search, and chat phases later.
+        </p>
+      </section>
+
+      <section className="upload-panel" aria-labelledby="upload-title">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <h2 id="upload-title">Upload document</h2>
+          <p>Phase 1 stores the file and metadata only.</p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+
+        <form onSubmit={handleSubmit} className="upload-form">
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+          />
+          <button type="submit" disabled={isUploading}>
+            {isUploading ? 'Uploading...' : 'Upload'}
+          </button>
+        </form>
       </section>
 
-      <div className="ticks"></div>
+      {error && <p className="message error">{error}</p>}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <section className="documents-section" aria-labelledby="documents-title">
+        <div className="section-heading">
+          <h2 id="documents-title">Uploaded documents</h2>
+          <button type="button" onClick={loadDocuments} disabled={isLoading}>
+            Refresh
+          </button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
+
+        {isLoading ? (
+          <p className="message">Loading documents...</p>
+        ) : documents.length === 0 ? (
+          <p className="message">No documents uploaded yet.</p>
+        ) : (
+          <div className="document-list">
+            {documents.map((document) => (
+              <article className="document-row" key={document.id}>
+                <div>
+                  <h3>{document.originalFileName}</h3>
+                  <p>{document.contentType}</p>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Size</dt>
+                    <dd>{formatBytes(document.sizeInBytes)}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{document.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Uploaded</dt>
+                    <dd>{new Date(document.uploadedAtUtc).toLocaleString()}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 export default App
