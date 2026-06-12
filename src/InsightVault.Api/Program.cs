@@ -14,7 +14,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ClientApp", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "https://localhost:5173")
+            .WithOrigins(
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://localhost:56772",
+                "https://localhost:56772")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -36,3 +40,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
