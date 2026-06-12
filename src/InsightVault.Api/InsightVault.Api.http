@@ -1,0 +1,6 @@
+@InsightVault.Api_HostAddress = http://localhost:5089
+
+GET {{InsightVault.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
