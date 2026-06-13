@@ -1,33 +1,34 @@
 # InsightVault
 
-InsightVault is an AI-powered document intelligence platform built with .NET, React, SQL Server, Azure Blob Storage, and planned Azure OpenAI integration.
+InsightVault is an AI-powered document intelligence platform built with .NET, React, SQL Server, Azure OpenAI, and Azure Blob Storage.
 
-The current implementation covers Phase 1: uploading documents, storing files in Azure Blob Storage, saving document metadata in SQL Server, and displaying uploaded documents in the React client.
+The application allows users to upload documents, extract and store content, generate embeddings, perform semantic search, and interact with documents using Retrieval-Augmented Generation (RAG).
 
 ---
 
-## Current Features
+## Features
 
-- Document upload API
-- Uploaded document list API
+### Current
+
+- Document upload
 - Azure Blob Storage integration
-- SQL Server metadata persistence with Entity Framework Core
-- Initial EF Core migration for the `Documents` table
-- React + TypeScript upload and document list UI
-- Clean Architecture project structure
-- xUnit tests for Domain and Application behavior
+- Document metadata storage
+- REST API
+- React frontend
+- Clean Architecture structure
 
-Not implemented yet:
+### Planned
 
 - PDF text extraction
 - Document chunking
-- Embeddings
+- Azure OpenAI embeddings
 - Semantic search
-- RAG chat
-- Authentication
-- Background processing
-- Azure AI Search
-- Agents
+- RAG chat experience
+- User authentication
+- Document versioning
+- Multi-user support
+- Citation-based responses
+- Agent integration through Azure AI Foundry
 
 ---
 
@@ -35,261 +36,183 @@ Not implemented yet:
 
 ```text
 React Client
-     |
-     v
+     │
+     ▼
 ASP.NET Core API
-     |
-     v
-Application
-     |
-     v
-Domain
-
-Infrastructure implements Application interfaces for:
-- SQL Server
-- Azure Blob Storage
+     │
+     ├── SQL Server
+     │
+     ├── Azure Blob Storage
+     │
+     └── Azure OpenAI
 ```
 
-### Project Responsibilities
-
-#### `InsightVault.Api`
-
-- HTTP endpoints
-- Request/response handling
-- Dependency injection composition
-- CORS and API configuration
-
-#### `InsightVault.Application`
-
-- Use cases and workflow orchestration
-- DTOs
-- Commands
-- Interfaces for external dependencies
-- Document upload/list application service
-
-#### `InsightVault.Domain`
-
-- Domain entities
-- Domain enums
-- Business validation
-
-#### `InsightVault.Infrastructure`
-
-- EF Core `ApplicationDbContext`
-- SQL Server repository implementation
-- Azure Blob Storage implementation
-- Infrastructure dependency registration
-- EF Core migrations
-
-#### `InsightVault.Client`
-
-- React + TypeScript frontend built with Vite
-- Upload form
-- Uploaded document list
-
-#### `InsightVault.Tests`
-
-- xUnit tests for Domain and Application logic
-
----
-
-## Solution Structure
+### Solution Structure
 
 ```text
 InsightVault
-|
-|-- src
-|   |-- InsightVault.Api
-|   |-- InsightVault.Application
-|   |-- InsightVault.Domain
-|   |-- InsightVault.Infrastructure
-|   |-- InsightVault.Client
-|
-|-- tests
-|   |-- InsightVault.Tests
-|
-|-- docs
+│
+├── src
+│   ├── InsightVault.Api
+│   ├── InsightVault.Application
+│   ├── InsightVault.Domain
+│   ├── InsightVault.Infrastructure
+│   └── insightvault.client
+│
+├── tests
+│   └── InsightVault.Tests
+│
+└── docs
 ```
 
 ---
 
-## API Endpoints
+## Projects
 
-### Upload Document
+### InsightVault.Api
 
-```http
-POST /api/documents
-Content-Type: multipart/form-data
-```
+ASP.NET Core Web API responsible for:
 
-Form field:
+- Controllers
+- Dependency Injection
+- Authentication
+- API endpoints
 
-- `file`: document file
+### InsightVault.Application
 
-### List Documents
+Contains:
 
-```http
-GET /api/documents
-```
+- Use cases
+- Business workflows
+- DTOs
+- Interfaces
+- Commands and queries
 
-Returns uploaded document metadata:
+### InsightVault.Domain
 
-- `id`
-- `originalFileName`
-- `contentType`
-- `sizeInBytes`
-- `blobName`
-- `uploadedAtUtc`
-- `status`
+Contains:
 
----
+- Entities
+- Value objects
+- Business rules
+- Domain models
 
-## Configuration
+### InsightVault.Infrastructure
 
-`src/InsightVault.Api/appsettings.json` contains default development settings:
+Contains integrations with:
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=InsightVault;Trusted_Connection=True;MultipleActiveResultSets=true"
-  },
-  "AzureBlobStorage": {
-    "ConnectionString": "",
-    "ContainerName": "documents"
-  }
-}
-```
+- SQL Server
+- Azure Blob Storage
+- Azure OpenAI
+- External services
 
-Set `AzureBlobStorage:ConnectionString` with user secrets or environment-specific configuration before using document upload.
+### insightvault.client
 
-Example:
+React + TypeScript frontend built with Vite.
 
-```bash
-dotnet user-secrets set "AzureBlobStorage:ConnectionString" "<your-connection-string>" --project src/InsightVault.Api
-```
+### InsightVault.Tests
+
+Unit and integration tests.
 
 ---
 
-## Database
-
-Create or update the local SQL Server database with:
-
-```bash
-dotnet ef database update --project src/InsightVault.Infrastructure --startup-project src/InsightVault.Api
-```
-
-The initial migration creates the `Documents` table.
-
----
-
-## Getting Started
+## Technology Stack
 
 ### Backend
 
-```bash
-dotnet restore
-dotnet ef database update --project src/InsightVault.Infrastructure --startup-project src/InsightVault.Api
-dotnet run --project src/InsightVault.Api
-```
-
-The API runs on the ports configured in `src/InsightVault.Api/Properties/launchSettings.json`.
+- .NET 10
+- ASP.NET Core Web API
+- Entity Framework Core
+- SQL Server
 
 ### Frontend
 
-```bash
-cd src/InsightVault.Client
-npm install
-npm run dev
-```
+- React
+- TypeScript
+- Vite
 
-The client expects the API at:
+### Cloud
 
-```text
-https://localhost:7227
-```
+- Azure Blob Storage
+- Azure OpenAI
+- Azure AI Foundry
 
-Override it with:
+### Testing
 
-```bash
-VITE_API_BASE_URL=https://localhost:7227 npm run dev
-```
-
----
-
-## Verification
-
-Backend build:
-
-```bash
-dotnet build InsightVault.slnx
-```
-
-Backend tests:
-
-```bash
-dotnet test InsightVault.slnx
-```
-
-Frontend build:
-
-```bash
-cd src/InsightVault.Client
-npm run build
-```
-
-Frontend lint:
-
-```bash
-cd src/InsightVault.Client
-npm run lint
-```
+- xUnit
 
 ---
 
 ## Development Roadmap
 
-### Phase 1: Foundation
+### Phase 1
 
-- [x] Create database schema
-- [x] Implement document upload API
-- [x] Save files to Azure Blob Storage
-- [x] Store metadata in SQL Server
-- [x] Display uploaded documents
+- [ ] Create database schema
+- [ ] Implement document upload API
+- [ ] Save files to Azure Blob Storage
+- [ ] Store metadata in SQL Server
+- [ ] Display uploaded documents
 
-### Phase 2: Document Processing
+### Phase 2
 
 - [ ] Extract text from uploaded PDFs
 - [ ] Implement document chunking
 - [ ] Generate embeddings
 - [ ] Store vectors
 
-### Phase 3: Semantic Search
+### Phase 3
 
 - [ ] Semantic search
 - [ ] Similarity ranking
 - [ ] Search API
 
-### Phase 4: RAG Chat
+### Phase 4
 
 - [ ] RAG implementation
 - [ ] Chat interface
 - [ ] Source citations
 
-### Phase 5: Advanced Features
+### Phase 5
 
 - [ ] Authentication
 - [ ] User accounts
 - [ ] Document permissions
-- [ ] Document versioning
 
 ---
 
-## Purpose
+## Getting Started
 
-InsightVault is a learning and portfolio project designed to demonstrate:
+### Clone Repository
 
-- Clean Architecture with ASP.NET Core
-- Practical document ingestion workflows
-- SQL Server and Azure Blob Storage integration
-- React + TypeScript frontend development
-- Future AI Engineering and RAG capabilities
+```bash
+git clone https://github.com/your-username/InsightVault.git
+```
+
+### Backend
+
+```bash
+cd src/InsightVault.Api
+dotnet run
+```
+
+### Frontend
+
+```bash
+cd src/insightvault.client
+
+npm install
+npm run dev
+```
+
+---
+
+## Inspiration
+
+InsightVault is a learning and portfolio project designed to explore:
+
+- AI Engineering
+- Retrieval-Augmented Generation (RAG)
+- Azure OpenAI
+- Document Intelligence
+- Semantic Search
+- Modern .NET Architecture
