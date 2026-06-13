@@ -1,4 +1,5 @@
 using InsightVault.Application.Interfaces;
+using InsightVault.Infrastructure.Chat;
 using InsightVault.Infrastructure.Documents;
 using InsightVault.Infrastructure.Embeddings;
 using InsightVault.Infrastructure.Persistence;
@@ -35,11 +36,21 @@ public static class DependencyInjection
             options.ApiVersion = section["ApiVersion"] ?? "2024-02-01";
         });
 
+        services.Configure<AzureOpenAiChatOptions>(options =>
+        {
+            var section = configuration.GetSection("AzureOpenAI");
+            options.Endpoint = section["Endpoint"] ?? string.Empty;
+            options.ApiKey = section["ApiKey"] ?? string.Empty;
+            options.DeploymentName = section["ChatDeploymentName"] ?? string.Empty;
+            options.ApiVersion = section["ApiVersion"] ?? "2024-10-21";
+        });
+
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentSearchRepository, DocumentRepository>();
         services.AddScoped<IBlobStorageService, BlobStorageService>();
         services.AddScoped<ITextExtractionService, PdfTextExtractionService>();
         services.AddHttpClient<IEmbeddingService, AzureOpenAiEmbeddingService>();
+        services.AddHttpClient<IChatCompletionService, AzureOpenAiChatCompletionService>();
 
         return services;
     }

@@ -1,5 +1,6 @@
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Processing;
+using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Search;
 using InsightVault.Infrastructure;
 
@@ -11,6 +12,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 builder.Services.AddScoped<ISemanticSearchService, SemanticSearchService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddInfrastructure(builder.Configuration);
 

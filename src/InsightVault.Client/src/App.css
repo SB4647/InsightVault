@@ -23,6 +23,7 @@
 
 .upload-panel,
 .search-panel,
+.chat-panel,
 .documents-section {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -30,7 +31,8 @@
 }
 
 .upload-panel,
-.search-panel {
+.search-panel,
+.chat-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -40,31 +42,40 @@
 
 .upload-panel h2,
 .search-panel h2,
+.chat-panel h2,
 .documents-section h2,
 .document-row h3 {
   margin: 0;
 }
 
 .upload-form,
-.search-form {
+.search-form,
+.chat-form {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.search-panel {
+.search-panel,
+.chat-panel {
   align-items: stretch;
   flex-direction: column;
   margin-top: 24px;
 }
 
-.search-form input {
+.search-form input,
+.chat-form textarea {
   min-width: min(100%, 420px);
   border: 1px solid var(--border);
   border-radius: 6px;
   font: inherit;
   padding: 9px 12px;
+}
+
+.chat-form textarea {
+  flex: 1;
+  resize: vertical;
 }
 
 .search-results {
@@ -88,6 +99,38 @@
 .search-result span {
   color: var(--text-strong);
   font-weight: 700;
+}
+
+.chat-answer {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.chat-answer h3 {
+  margin: 0;
+}
+
+.source-list {
+  display: grid;
+  gap: 12px;
+}
+
+.source-item {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.source-item div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-strong);
+}
+
+.source-item span {
+  color: var(--muted);
 }
 
 button {
@@ -185,6 +228,7 @@ dd {
 
   .upload-panel,
   .search-panel,
+  .chat-panel,
   .document-row,
   .section-heading {
     align-items: stretch;
@@ -193,6 +237,7 @@ dd {
 
   .upload-panel,
   .search-panel,
+  .chat-panel,
   .section-heading {
     flex-direction: column;
   }

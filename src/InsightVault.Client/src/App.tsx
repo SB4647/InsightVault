@@ -5,15 +5,20 @@ import { getDocuments, processDocument, uploadDocument } from './api/documents'
 import type { DocumentDto } from './api/documents'
 import { searchDocuments } from './api/search'
 import type { SearchResultDto } from './api/search'
+import { askQuestion } from './api/chat'
+import type { ChatResponseDto } from './api/chat'
 
 function App() {
   const [documents, setDocuments] = useState<DocumentDto[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResultDto[]>([])
+  const [chatQuestion, setChatQuestion] = useState('')
+  const [chatResponse, setChatResponse] = useState<ChatResponseDto | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [isAsking, setIsAsking] = useState(false)
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -97,6 +102,26 @@ function App() {
     }
   }
 
+  async function handleAsk(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!chatQuestion.trim()) {
+      setError('Enter a chat question.')
+      return
+    }
+
+    setIsAsking(true)
+    setError(null)
+
+    try {
+      setChatResponse(await askQuestion(chatQuestion.trim()))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not answer question.')
+    } finally {
+      setIsAsking(false)
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="page-header">
@@ -157,6 +182,49 @@ function App() {
                 <span>{Math.round(result.score * 100)}%</span>
               </article>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="chat-panel" aria-labelledby="chat-title">
+        <div>
+          <h2 id="chat-title">RAG chat</h2>
+          <p>Ask a question and get an answer grounded in processed document chunks.</p>
+        </div>
+
+        <form onSubmit={handleAsk} className="chat-form">
+          <textarea
+            value={chatQuestion}
+            onChange={(event) => setChatQuestion(event.target.value)}
+            placeholder="What should I know from these documents?"
+            rows={3}
+          />
+          <button type="submit" disabled={isAsking}>
+            {isAsking ? 'Asking...' : 'Ask'}
+          </button>
+        </form>
+
+        {chatResponse && (
+          <div className="chat-answer">
+            <h3>Answer</h3>
+            <p>{chatResponse.answer}</p>
+
+            {chatResponse.sources.length > 0 && (
+              <div className="source-list">
+                <h3>Sources</h3>
+                {chatResponse.sources.map((source, index) => (
+                  <article className="source-item" key={source.chunkId}>
+                    <div>
+                      <strong>
+                        [{index + 1}] {source.documentName}
+                      </strong>
+                      <span>Chunk {source.chunkIndex}</span>
+                    </div>
+                    <p>{source.text}</p>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>

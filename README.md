@@ -7,8 +7,9 @@ The current implementation covers:
 - Phase 1: document upload and document list
 - Phase 2: PDF text extraction, document chunking, embedding generation, and vector persistence
 - Phase 3: semantic search, similarity ranking, and search API
+- Phase 4: RAG chat, grounded answers, and source citations
 
-RAG chat, authentication, background jobs, Azure AI Search, and agents are not implemented yet.
+Authentication, background jobs, Azure AI Search, and agents are not implemented yet.
 
 ---
 
@@ -25,6 +26,9 @@ RAG chat, authentication, background jobs, Azure AI Search, and agents are not i
 - Persist chunks and embedding vectors in SQL Server
 - Search processed document chunks semantically
 - Rank search results by cosine similarity
+- Ask questions against processed documents with RAG chat
+- Generate grounded answers through Azure OpenAI chat completions
+- Return source citations for chat answers
 - Track document processing status: `Uploaded`, `Processing`, `Processed`, `Failed`
 - Clean Architecture project structure
 - xUnit tests for Domain and Application behavior
@@ -66,9 +70,10 @@ Infrastructure implements Application interfaces for:
 - Document upload/list use cases
 - Document processing workflow
 - Semantic search workflow
+- RAG chat workflow
 - Chunking service
 - DTOs and commands
-- Interfaces for storage, repositories, text extraction, and embeddings
+- Interfaces for storage, repositories, text extraction, embeddings, and chat completion
 
 #### `InsightVault.Domain`
 
@@ -85,6 +90,7 @@ Infrastructure implements Application interfaces for:
 - Azure Blob Storage implementation
 - PdfPig PDF text extraction
 - Azure OpenAI embedding adapter
+- Azure OpenAI chat completion adapter
 - EF Core migrations
 
 #### `InsightVault.Client`
@@ -94,6 +100,7 @@ Infrastructure implements Application interfaces for:
 - Uploaded document list
 - Process document action
 - Semantic search panel
+- RAG chat panel
 - Status and chunk count display
 
 #### `InsightVault.Tests`
@@ -168,6 +175,40 @@ Returns:
 - `text`
 - `score`
 
+### RAG Chat
+
+```http
+POST /api/chat
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "question": "What does this document say about the roadmap?",
+  "maxSources": 5
+}
+```
+
+Chat does the Phase 4 workflow:
+
+1. Runs semantic search for the question.
+2. Sends the top matching chunks to Azure OpenAI chat completions.
+3. Returns a grounded answer.
+4. Returns the chunks used as source citations.
+
+Returns:
+
+- `answer`
+- `sources`
+  - `documentId`
+  - `documentName`
+  - `chunkId`
+  - `chunkIndex`
+  - `text`
+  - `score`
+
 ---
 
 ## Configuration
@@ -187,7 +228,8 @@ Returns:
     "Endpoint": "",
     "ApiKey": "",
     "EmbeddingDeploymentName": "",
-    "ApiVersion": "2024-02-01"
+    "ChatDeploymentName": "",
+    "ApiVersion": "2024-10-21"
   }
 }
 ```
@@ -199,6 +241,7 @@ dotnet user-secrets set "AzureBlobStorage:ConnectionString" "<blob-storage-conne
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://<resource-name>.openai.azure.com" --project src/InsightVault.Api
 dotnet user-secrets set "AzureOpenAI:ApiKey" "<azure-openai-api-key>" --project src/InsightVault.Api
 dotnet user-secrets set "AzureOpenAI:EmbeddingDeploymentName" "<embedding-deployment-name>" --project src/InsightVault.Api
+dotnet user-secrets set "AzureOpenAI:ChatDeploymentName" "<chat-deployment-name>" --project src/InsightVault.Api
 ```
 
 ---
@@ -307,9 +350,9 @@ npm run lint
 
 ### Phase 4: RAG Chat
 
-- [ ] RAG implementation
-- [ ] Chat interface
-- [ ] Source citations
+- [x] RAG implementation
+- [x] Chat interface
+- [x] Source citations
 
 ### Phase 5: Advanced Features
 
@@ -328,5 +371,6 @@ InsightVault is a learning and portfolio project designed to demonstrate:
 - Practical document ingestion and processing workflows
 - SQL Server and Azure Blob Storage integration
 - Azure OpenAI embedding integration
+- Azure OpenAI chat completion integration
 - React + TypeScript frontend development
-- Future semantic search and RAG capabilities
+- Future authentication and document permission capabilities
