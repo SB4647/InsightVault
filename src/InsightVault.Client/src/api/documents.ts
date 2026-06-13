@@ -7,6 +7,8 @@ export interface DocumentDto {
   uploadedAtUtc: string
   status: string
   chunkCount: number
+  isOwner: boolean
+  accessLevel: string
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7227'
@@ -47,6 +49,13 @@ export interface DocumentProcessingResultDto {
   status: string
 }
 
+export interface DocumentShareDto {
+  documentId: string
+  sharedWithUserId: string
+  sharedWithEmail: string
+  accessLevel: string
+}
+
 export async function processDocument(
   documentId: string,
   token: string,
@@ -59,6 +68,28 @@ export async function processDocument(
   if (!response.ok) {
     const message = await response.text()
     throw new Error(message || 'Could not process document.')
+  }
+
+  return response.json()
+}
+
+export async function shareDocument(
+  documentId: string,
+  email: string,
+  token: string,
+): Promise<DocumentShareDto> {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/share`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Could not share document.')
   }
 
   return response.json()

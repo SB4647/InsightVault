@@ -86,7 +86,7 @@ public class SemanticSearchServiceTests
     }
 
     [Fact]
-    public async Task SearchAsync_ReturnsOnlyDocumentsOwnedByUser()
+    public async Task SearchAsync_ReturnsOwnedAndSharedDocuments()
     {
         var ownedDocument = Document.Create(
             "owned.pdf",
@@ -109,6 +109,7 @@ public class SemanticSearchServiceTests
         var otherChunk = DocumentChunk.Create(otherDocument.Id, 0, "other content");
         otherChunk.SetEmbedding([1.0f]);
         otherDocument.CompleteProcessing([otherChunk]);
+        otherDocument.ShareWithViewer("user-1");
 
         var service = new SemanticSearchService(
             new StubEmbeddingService([1.0f]),
@@ -116,7 +117,10 @@ public class SemanticSearchServiceTests
 
         var results = await service.SearchAsync(new SearchDocumentsQuery("content", "user-1"));
 
-        Assert.Collection(results, result => Assert.Equal("owned.pdf", result.DocumentName));
+        Assert.Collection(
+            results,
+            first => Assert.Equal("other.pdf", first.DocumentName),
+            second => Assert.Equal("owned.pdf", second.DocumentName));
     }
 
     private sealed class StubEmbeddingService(IReadOnlyList<float> vector) : IEmbeddingService
@@ -137,7 +141,11 @@ public class SemanticSearchServiceTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Document>>(
-                documents.Where(document => document.OwnerUserId == ownerUserId).ToList());
+                documents
+                    .Where(document =>
+                        document.OwnerUserId == ownerUserId ||
+                        document.Permissions.Any(permission => permission.UserId == ownerUserId))
+                    .ToList());
         }
     }
 }

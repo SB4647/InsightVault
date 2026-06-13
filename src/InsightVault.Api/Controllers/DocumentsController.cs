@@ -77,4 +77,34 @@ public sealed class DocumentsController(
             return NotFound(ex.Message);
         }
     }
+
+    [HttpPost("{id:guid}/share")]
+    [ProducesResponseType(typeof(DocumentShareDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DocumentShareDto>> ShareDocument(
+        Guid id,
+        ShareDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest("Email is required.");
+        }
+
+        try
+        {
+            var result = await documentService.ShareDocumentAsync(
+                new ShareDocumentCommand(id, User.GetRequiredUserId(), request.Email),
+                cancellationToken);
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("was not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    public sealed record ShareDocumentRequest(string Email);
 }

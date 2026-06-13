@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
-import { getDocuments, processDocument, uploadDocument } from './api/documents'
+import { getDocuments, processDocument, shareDocument, uploadDocument } from './api/documents'
 import type { DocumentDto } from './api/documents'
 import { searchDocuments } from './api/search'
 import type { SearchResultDto } from './api/search'
@@ -23,12 +23,14 @@ function App() {
   const [searchResults, setSearchResults] = useState<SearchResultDto[]>([])
   const [chatQuestion, setChatQuestion] = useState('')
   const [chatResponse, setChatResponse] = useState<ChatResponseDto | null>(null)
+  const [shareEmails, setShareEmails] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(() => Boolean(auth))
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [isAsking, setIsAsking] = useState(false)
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null)
+  const [sharingDocumentId, setSharingDocumentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -158,6 +160,28 @@ function App() {
       setError(err instanceof Error ? err.message : 'Could not process document.')
     } finally {
       setProcessingDocumentId(null)
+    }
+  }
+
+  async function handleShare(event: FormEvent<HTMLFormElement>, documentId: string) {
+    event.preventDefault()
+
+    const email = shareEmails[documentId]?.trim()
+    if (!email) {
+      setError('Enter an email address to share with.')
+      return
+    }
+
+    setSharingDocumentId(documentId)
+    setError(null)
+
+    try {
+      await shareDocument(documentId, email, auth?.token ?? '')
+      setShareEmails((current) => ({ ...current, [documentId]: '' }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not share document.')
+    } finally {
+      setSharingDocumentId(null)
     }
   }
 
@@ -388,6 +412,10 @@ function App() {
                     <dd>{document.status}</dd>
                   </div>
                   <div>
+                    <dt>Access</dt>
+                    <dd>{document.accessLevel}</dd>
+                  </div>
+                  <div>
                     <dt>Chunks</dt>
                     <dd>{document.chunkCount}</dd>
                   </div>
@@ -396,13 +424,35 @@ function App() {
                     <dd>{new Date(document.uploadedAtUtc).toLocaleString()}</dd>
                   </div>
                 </dl>
-                <button
-                  type="button"
-                  onClick={() => handleProcess(document.id)}
-                  disabled={processingDocumentId === document.id || document.status === 'Processed'}
-                >
-                  {processingDocumentId === document.id ? 'Processing...' : 'Process'}
-                </button>
+                {document.isOwner ? (
+                  <div className="document-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleProcess(document.id)}
+                      disabled={processingDocumentId === document.id || document.status === 'Processed'}
+                    >
+                      {processingDocumentId === document.id ? 'Processing...' : 'Process'}
+                    </button>
+                    <form className="share-form" onSubmit={(event) => handleShare(event, document.id)}>
+                      <input
+                        type="email"
+                        value={shareEmails[document.id] ?? ''}
+                        onChange={(event) =>
+                          setShareEmails((current) => ({
+                            ...current,
+                            [document.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Share by email"
+                      />
+                      <button type="submit" disabled={sharingDocumentId === document.id}>
+                        {sharingDocumentId === document.id ? 'Sharing...' : 'Share'}
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <span className="viewer-badge">Shared with you</span>
+                )}
               </article>
             ))}
           </div>

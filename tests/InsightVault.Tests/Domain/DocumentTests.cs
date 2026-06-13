@@ -62,4 +62,37 @@ public class DocumentTests
             uploadedAt,
             " "));
     }
+
+    [Fact]
+    public void ShareWithViewer_AddsViewerPermission()
+    {
+        var document = Document.Create(
+            "file.pdf",
+            "application/pdf",
+            1024,
+            "documents/file.pdf",
+            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
+            "owner-1");
+
+        document.ShareWithViewer("viewer-1");
+
+        var permission = Assert.Single(document.Permissions);
+        Assert.Equal(document.Id, permission.DocumentId);
+        Assert.Equal("viewer-1", permission.UserId);
+        Assert.Equal(DocumentPermissionLevel.Viewer, permission.Level);
+    }
+
+    [Fact]
+    public void ShareWithViewer_WhenSharingWithOwner_ThrowsArgumentException()
+    {
+        var document = Document.Create(
+            "file.pdf",
+            "application/pdf",
+            1024,
+            "documents/file.pdf",
+            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
+            "owner-1");
+
+        Assert.Throws<ArgumentException>(() => document.ShareWithViewer("owner-1"));
+    }
 }

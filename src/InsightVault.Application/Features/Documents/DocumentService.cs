@@ -8,7 +8,8 @@ namespace InsightVault.Application.Features.Documents;
 public sealed class DocumentService(
     IDocumentRepository documentRepository,
     IBlobStorageService blobStorageService,
-    TimeProvider timeProvider) : IDocumentService
+    TimeProvider timeProvider,
+    IUserLookupService userLookupService) : IDocumentService
 {
     public async Task<DocumentDto> UploadAsync(
         UploadDocumentCommand command,
@@ -45,7 +46,7 @@ public sealed class DocumentService(
         await documentRepository.AddAsync(document, cancellationToken);
         await documentRepository.SaveChangesAsync(cancellationToken);
 
-        return MapToDto(document);
+        return MapToDto(document, command.OwnerUserId);
     }
 
     public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(
@@ -56,12 +57,44 @@ public sealed class DocumentService(
 
         return documents
             .OrderByDescending(document => document.UploadedAtUtc)
-            .Select(MapToDto)
+            .Select(document => MapToDto(document, ownerUserId))
             .ToList();
     }
 
-    private static DocumentDto MapToDto(Document document)
+    public async Task<DocumentShareDto> ShareDocumentAsync(
+        ShareDocumentCommand command,
+        CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(command.SharedWithEmail))
+        {
+            throw new ArgumentException("Shared user email is required.", nameof(command));
+        }
+
+        var document = await documentRepository.GetByIdAsync(
+                command.DocumentId,
+                command.OwnerUserId,
+                cancellationToken)
+            ?? throw new InvalidOperationException($"Document '{command.DocumentId}' was not found.");
+
+        var sharedWithUser = await userLookupService.FindByEmailAsync(
+                command.SharedWithEmail,
+                cancellationToken)
+            ?? throw new InvalidOperationException($"User '{command.SharedWithEmail}' was not found.");
+
+        var permission = document.ShareWithViewer(sharedWithUser.UserId);
+        await documentRepository.SaveChangesAsync(cancellationToken);
+
+        return new DocumentShareDto(
+            document.Id,
+            sharedWithUser.UserId,
+            sharedWithUser.Email,
+            permission.Level.ToString());
+    }
+
+    private static DocumentDto MapToDto(Document document, string currentUserId)
+    {
+        var isOwner = document.OwnerUserId == currentUserId;
+
         return new DocumentDto(
             document.Id,
             document.OriginalFileName,
@@ -70,6 +103,8 @@ public sealed class DocumentService(
             document.BlobName,
             document.UploadedAtUtc,
             document.Status.ToString(),
-            document.Chunks.Count);
+            document.Chunks.Count,
+            isOwner,
+            isOwner ? "Owner" : "Viewer");
     }
 }

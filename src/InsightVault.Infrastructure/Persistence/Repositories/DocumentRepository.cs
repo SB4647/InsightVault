@@ -20,6 +20,7 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         return await dbContext.Documents
             .Include(document => document.Chunks)
             .ThenInclude(chunk => chunk.Embedding)
+            .Include(document => document.Permissions)
             .SingleOrDefaultAsync(
                 document => document.Id == id && document.OwnerUserId == ownerUserId,
                 cancellationToken);
@@ -32,7 +33,10 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         return await dbContext.Documents
             .AsNoTracking()
             .Include(document => document.Chunks)
-            .Where(document => document.OwnerUserId == ownerUserId)
+            .Include(document => document.Permissions)
+            .Where(document =>
+                document.OwnerUserId == ownerUserId ||
+                document.Permissions.Any(permission => permission.UserId == ownerUserId))
             .OrderByDescending(document => document.UploadedAtUtc)
             .ToListAsync(cancellationToken);
     }
@@ -48,10 +52,12 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
     {
         return await dbContext.Documents
             .AsNoTracking()
+            .Include(document => document.Permissions)
             .Include(document => document.Chunks)
             .ThenInclude(chunk => chunk.Embedding)
             .Where(document =>
-                document.OwnerUserId == ownerUserId &&
+                (document.OwnerUserId == ownerUserId ||
+                 document.Permissions.Any(permission => permission.UserId == ownerUserId)) &&
                 document.Status == DocumentProcessingStatus.Processed)
             .ToListAsync(cancellationToken);
     }

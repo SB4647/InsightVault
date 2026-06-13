@@ -13,7 +13,7 @@ public class DocumentServiceTests
         var repository = new InMemoryDocumentRepository();
         var blobStorage = new RecordingBlobStorageService();
         var timeProvider = new FixedTimeProvider(new DateTimeOffset(2026, 6, 12, 10, 30, 0, TimeSpan.Zero));
-        var service = new DocumentService(repository, blobStorage, timeProvider);
+        var service = new DocumentService(repository, blobStorage, timeProvider, new StubUserLookupService());
         await using var content = new MemoryStream([1, 2, 3]);
         var command = new UploadDocumentCommand("Report.pdf", "application/pdf", 3, content, "user-1");
 
@@ -52,7 +52,11 @@ public class DocumentServiceTests
             "user-1");
         repository.Documents.Add(older);
         repository.Documents.Add(newer);
-        var service = new DocumentService(repository, new RecordingBlobStorageService(), TimeProvider.System);
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService());
 
         var documents = await service.GetDocumentsAsync("user-1");
 
@@ -63,7 +67,7 @@ public class DocumentServiceTests
     }
 
     [Fact]
-    public async Task GetDocumentsAsync_ReturnsOnlyDocumentsOwnedByUser()
+    public async Task GetDocumentsAsync_ReturnsOwnedAndSharedDocuments()
     {
         var repository = new InMemoryDocumentRepository();
         var owned = Document.Create(
@@ -80,13 +84,82 @@ public class DocumentServiceTests
             "documents/other.pdf",
             new DateTime(2026, 6, 12, 11, 0, 0, DateTimeKind.Utc),
             "user-2");
+        other.ShareWithViewer("user-1");
         repository.Documents.Add(owned);
         repository.Documents.Add(other);
-        var service = new DocumentService(repository, new RecordingBlobStorageService(), TimeProvider.System);
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService());
 
         var documents = await service.GetDocumentsAsync("user-1");
 
-        Assert.Collection(documents, document => Assert.Equal("owned.pdf", document.OriginalFileName));
+        Assert.Collection(
+            documents,
+            first =>
+            {
+                Assert.Equal("other.pdf", first.OriginalFileName);
+                Assert.False(first.IsOwner);
+                Assert.Equal("Viewer", first.AccessLevel);
+            },
+            second =>
+            {
+                Assert.Equal("owned.pdf", second.OriginalFileName);
+                Assert.True(second.IsOwner);
+                Assert.Equal("Owner", second.AccessLevel);
+            });
+    }
+
+    [Fact]
+    public async Task ShareDocumentAsync_WhenOwnerSharesWithExistingUser_AddsViewerPermission()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var document = Document.Create(
+            "owned.pdf",
+            "application/pdf",
+            100,
+            "documents/owned.pdf",
+            new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
+            "owner-1");
+        repository.Documents.Add(document);
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService(("viewer@example.com", "viewer-1")));
+
+        var result = await service.ShareDocumentAsync(
+            new ShareDocumentCommand(document.Id, "owner-1", "viewer@example.com"));
+
+        Assert.Equal(document.Id, result.DocumentId);
+        Assert.Equal("viewer-1", result.SharedWithUserId);
+        Assert.Equal("viewer@example.com", result.SharedWithEmail);
+        Assert.Equal("Viewer", result.AccessLevel);
+        Assert.Contains(document.Permissions, permission => permission.UserId == "viewer-1");
+        Assert.Equal(1, repository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ShareDocumentAsync_WhenDocumentIsNotOwnedByUser_ThrowsInvalidOperationException()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var document = Document.Create(
+            "owned.pdf",
+            "application/pdf",
+            100,
+            "documents/owned.pdf",
+            new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
+            "owner-1");
+        repository.Documents.Add(document);
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService(("viewer@example.com", "viewer-1")));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ShareDocumentAsync(new ShareDocumentCommand(document.Id, "user-2", "viewer@example.com")));
     }
 
     private sealed class InMemoryDocumentRepository : IDocumentRepository
@@ -114,7 +187,11 @@ public class DocumentServiceTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Document>>(
-                Documents.Where(document => document.OwnerUserId == ownerUserId).ToList());
+                Documents
+                    .Where(document =>
+                        document.OwnerUserId == ownerUserId ||
+                        document.Permissions.Any(permission => permission.UserId == ownerUserId))
+                    .ToList());
         }
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -149,5 +226,18 @@ public class DocumentServiceTests
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private sealed class StubUserLookupService(params (string Email, string UserId)[] users) : IUserLookupService
+    {
+        public Task<UserLookupResult?> FindByEmailAsync(
+            string email,
+            CancellationToken cancellationToken = default)
+        {
+            var user = users.SingleOrDefault(user =>
+                string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase));
+
+            return Task.FromResult(user.UserId is null ? null : new UserLookupResult(user.UserId, user.Email));
+        }
     }
 }

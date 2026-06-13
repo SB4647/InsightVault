@@ -5,6 +5,7 @@ namespace InsightVault.Domain.Entities;
 public class Document
 {
     private readonly List<DocumentChunk> _chunks = [];
+    private readonly List<DocumentPermission> _permissions = [];
 
     private Document()
     {
@@ -37,6 +38,7 @@ public class Document
     public string OwnerUserId { get; private set; } = string.Empty;
     public DocumentProcessingStatus Status { get; private set; }
     public IReadOnlyCollection<DocumentChunk> Chunks => _chunks.AsReadOnly();
+    public IReadOnlyCollection<DocumentPermission> Permissions => _permissions.AsReadOnly();
 
     public static Document Create(
         string originalFileName,
@@ -108,5 +110,30 @@ public class Document
     public void MarkProcessingFailed()
     {
         Status = DocumentProcessingStatus.Failed;
+    }
+
+    public DocumentPermission ShareWithViewer(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new ArgumentException("User id is required.", nameof(userId));
+        }
+
+        var normalizedUserId = userId.Trim();
+        if (normalizedUserId == OwnerUserId)
+        {
+            throw new ArgumentException("Document owner already has access.", nameof(userId));
+        }
+
+        var existingPermission = _permissions.SingleOrDefault(permission => permission.UserId == normalizedUserId);
+        if (existingPermission is not null)
+        {
+            return existingPermission;
+        }
+
+        var permission = DocumentPermission.CreateViewer(Id, normalizedUserId);
+        _permissions.Add(permission);
+
+        return permission;
     }
 }

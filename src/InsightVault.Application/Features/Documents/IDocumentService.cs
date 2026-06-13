@@ -13,4 +13,8 @@ public interface IDocumentService
     Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(
         string ownerUserId,
         CancellationToken cancellationToken = default);
+
+    Task<DocumentShareDto> ShareDocumentAsync(
+        ShareDocumentCommand command,
+        CancellationToken cancellationToken = default);
 }

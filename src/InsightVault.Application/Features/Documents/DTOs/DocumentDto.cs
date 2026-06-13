@@ -8,4 +8,6 @@ public sealed record DocumentDto(
     string BlobName,
     DateTime UploadedAtUtc,
     string Status,
-    int ChunkCount);
+    int ChunkCount,
+    bool IsOwner,
+    string AccessLevel);

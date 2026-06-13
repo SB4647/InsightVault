@@ -9,8 +9,9 @@ The current implementation covers:
 - Phase 3: semantic search, similarity ranking, and search API
 - Phase 4: RAG chat, grounded answers, and source citations
 - Phase 5A: local user accounts, JWT authentication, and document ownership
+- Phase 5B: shared document permissions for viewer access
 
-Shared document permissions, document versioning, background jobs, Azure AI Search, and agents are not implemented yet.
+Document versioning, background jobs, Azure AI Search, and agents are not implemented yet.
 
 ---
 
@@ -20,6 +21,8 @@ Shared document permissions, document versioning, background jobs, Azure AI Sear
 - Register and log in with local user accounts
 - Protect document, search, and chat APIs with JWT bearer authentication
 - Scope uploaded documents, search results, and chat answers to the current user
+- Share owned documents with other registered users as viewers
+- Include shared viewer documents in document lists, semantic search, and RAG chat
 - Store uploaded files in Azure Blob Storage
 - Store document metadata in SQL Server
 - List uploaded documents
@@ -77,6 +80,7 @@ Infrastructure implements Application interfaces for:
 - Semantic search workflow
 - RAG chat workflow
 - Owner-scoped document access contracts
+- Viewer permission checks for shared document access
 - Chunking service
 - DTOs and commands
 - Interfaces for storage, repositories, text extraction, embeddings, and chat completion
@@ -106,6 +110,7 @@ Infrastructure implements Application interfaces for:
 - Upload form
 - Login/register form
 - Uploaded document list
+- Share document form for owned documents
 - Process document action
 - Semantic search panel
 - RAG chat panel
@@ -196,12 +201,18 @@ Returns uploaded document metadata:
 - `uploadedAtUtc`
 - `status`
 - `chunkCount`
+- `isOwner`
+- `accessLevel`
+
+The list includes documents owned by the current user and documents shared with the current user.
 
 ### Process Document
 
 ```http
 POST /api/documents/{id}/process
 ```
+
+Only the document owner can process a document.
 
 Processing does the Phase 2 workflow:
 
@@ -210,6 +221,32 @@ Processing does the Phase 2 workflow:
 3. Splits text into overlapping chunks.
 4. Generates one embedding per chunk.
 5. Stores chunks and embedding vectors in SQL Server.
+
+### Share Document
+
+```http
+POST /api/documents/{id}/share
+Content-Type: application/json
+```
+
+Only the document owner can share a document.
+
+Request:
+
+```json
+{
+  "email": "viewer@example.com"
+}
+```
+
+Sharing grants viewer access. Viewers can list, search, and chat over shared processed documents, but they cannot process or re-share them.
+
+Returns:
+
+- `documentId`
+- `sharedWithUserId`
+- `sharedWithEmail`
+- `accessLevel`
 
 ### Semantic Search
 
@@ -324,6 +361,7 @@ Current migrations:
 - `InitialCreate`: creates `Documents`
 - `AddDocumentProcessing`: creates `DocumentChunks` and `Embeddings`
 - `AddIdentityAndDocumentOwnership`: creates ASP.NET Core Identity tables and adds `Documents.OwnerUserId`
+- `AddDocumentPermissions`: creates `DocumentPermissions`
 
 ---
 
@@ -425,7 +463,7 @@ npm run lint
 - [x] Authentication
 - [x] User accounts
 - [x] Document ownership
-- [ ] Shared document permissions
+- [x] Shared document permissions
 - [ ] Document versioning
 
 ---
@@ -440,5 +478,6 @@ InsightVault is a learning and portfolio project designed to demonstrate:
 - Azure OpenAI embedding integration
 - Azure OpenAI chat completion integration
 - ASP.NET Core Identity and JWT authentication
+- Viewer-only document sharing
 - React + TypeScript frontend development
-- Future shared permissions and document versioning capabilities
+- Future document versioning capabilities

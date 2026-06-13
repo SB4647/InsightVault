@@ -58,6 +58,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentSearchRepository, DocumentRepository>();
+        services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddScoped<IBlobStorageService, BlobStorageService>();
         services.AddScoped<ITextExtractionService, PdfTextExtractionService>();
         services.AddHttpClient<IEmbeddingService, AzureOpenAiEmbeddingService>();

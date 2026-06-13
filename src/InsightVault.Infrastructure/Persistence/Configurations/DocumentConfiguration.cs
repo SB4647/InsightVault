@@ -43,5 +43,8 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
 
         builder.Navigation(document => document.Chunks)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(document => document.Permissions)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

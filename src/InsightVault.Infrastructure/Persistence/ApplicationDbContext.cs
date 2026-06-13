@@ -10,6 +10,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
     public DbSet<Embedding> Embeddings => Set<Embedding>();
+    public DbSet<DocumentPermission> DocumentPermissions => Set<DocumentPermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
