@@ -3,7 +3,7 @@
   <Project Path="src/InsightVault.Application/InsightVault.Application.csproj" />
   <Project Path="src/InsightVault.Domain/InsightVault.Domain.csproj" />
   <Project Path="src/InsightVault.Infrastructure/InsightVault.Infrastructure.csproj" />
-  <Project Path="src/insightvault.client/insightvault.client.esproj">
+  <Project Path="src/insightvault.client/insightvault.client.esproj" DisplayName="InsightVault.Client">
     <Build />
     <Deploy />
   </Project>

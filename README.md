@@ -6,8 +6,9 @@ The current implementation covers:
 
 - Phase 1: document upload and document list
 - Phase 2: PDF text extraction, document chunking, embedding generation, and vector persistence
+- Phase 3: semantic search, similarity ranking, and search API
 
-Semantic search, RAG chat, authentication, background jobs, Azure AI Search, and agents are not implemented yet.
+RAG chat, authentication, background jobs, Azure AI Search, and agents are not implemented yet.
 
 ---
 
@@ -22,6 +23,8 @@ Semantic search, RAG chat, authentication, background jobs, Azure AI Search, and
 - Split extracted text into overlapping chunks
 - Generate embeddings through Azure OpenAI
 - Persist chunks and embedding vectors in SQL Server
+- Search processed document chunks semantically
+- Rank search results by cosine similarity
 - Track document processing status: `Uploaded`, `Processing`, `Processed`, `Failed`
 - Clean Architecture project structure
 - xUnit tests for Domain and Application behavior
@@ -62,6 +65,7 @@ Infrastructure implements Application interfaces for:
 
 - Document upload/list use cases
 - Document processing workflow
+- Semantic search workflow
 - Chunking service
 - DTOs and commands
 - Interfaces for storage, repositories, text extraction, and embeddings
@@ -89,6 +93,7 @@ Infrastructure implements Application interfaces for:
 - Upload form
 - Uploaded document list
 - Process document action
+- Semantic search panel
 - Status and chunk count display
 
 #### `InsightVault.Tests`
@@ -140,6 +145,28 @@ Processing does the Phase 2 workflow:
 3. Splits text into overlapping chunks.
 4. Generates one embedding per chunk.
 5. Stores chunks and embedding vectors in SQL Server.
+
+### Semantic Search
+
+```http
+GET /api/search?query={query}&maxResults=10
+```
+
+Search does the Phase 3 workflow:
+
+1. Generates an embedding for the search query.
+2. Loads processed document chunks and stored embeddings.
+3. Calculates cosine similarity.
+4. Returns ranked matching chunks.
+
+Returns:
+
+- `documentId`
+- `documentName`
+- `chunkId`
+- `chunkIndex`
+- `text`
+- `score`
 
 ---
 
@@ -274,9 +301,9 @@ npm run lint
 
 ### Phase 3: Semantic Search
 
-- [ ] Semantic search
-- [ ] Similarity ranking
-- [ ] Search API
+- [x] Semantic search
+- [x] Similarity ranking
+- [x] Search API
 
 ### Phase 4: RAG Chat
 

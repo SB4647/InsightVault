@@ -1,10 +1,11 @@
 using InsightVault.Application.Interfaces;
 using InsightVault.Domain.Entities;
+using InsightVault.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace InsightVault.Infrastructure.Persistence.Repositories;
 
-public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocumentRepository
+public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocumentRepository, IDocumentSearchRepository
 {
     public async Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
@@ -31,5 +32,15 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Document>> ListProcessedDocumentsAsync(CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Documents
+            .AsNoTracking()
+            .Include(document => document.Chunks)
+            .ThenInclude(chunk => chunk.Embedding)
+            .Where(document => document.Status == DocumentProcessingStatus.Processed)
+            .ToListAsync(cancellationToken);
     }
 }

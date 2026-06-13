@@ -22,13 +22,15 @@
 }
 
 .upload-panel,
+.search-panel,
 .documents-section {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
 }
 
-.upload-panel {
+.upload-panel,
+.search-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -37,16 +39,55 @@
 }
 
 .upload-panel h2,
+.search-panel h2,
 .documents-section h2,
 .document-row h3 {
   margin: 0;
 }
 
-.upload-form {
+.upload-form,
+.search-form {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.search-panel {
+  align-items: stretch;
+  flex-direction: column;
+  margin-top: 24px;
+}
+
+.search-form input {
+  min-width: min(100%, 420px);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  padding: 9px 12px;
+}
+
+.search-results {
+  display: grid;
+  gap: 12px;
+}
+
+.search-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.search-result h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.search-result span {
+  color: var(--text-strong);
+  font-weight: 700;
 }
 
 button {
@@ -143,6 +184,7 @@ dd {
   }
 
   .upload-panel,
+  .search-panel,
   .document-row,
   .section-heading {
     align-items: stretch;
@@ -150,6 +192,7 @@ dd {
   }
 
   .upload-panel,
+  .search-panel,
   .section-heading {
     flex-direction: column;
   }

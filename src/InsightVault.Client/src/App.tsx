@@ -3,12 +3,17 @@ import type { FormEvent } from 'react'
 import './App.css'
 import { getDocuments, processDocument, uploadDocument } from './api/documents'
 import type { DocumentDto } from './api/documents'
+import { searchDocuments } from './api/search'
+import type { SearchResultDto } from './api/search'
 
 function App() {
   const [documents, setDocuments] = useState<DocumentDto[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResultDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,6 +77,26 @@ function App() {
     }
   }
 
+  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!searchQuery.trim()) {
+      setError('Enter a search query.')
+      return
+    }
+
+    setIsSearching(true)
+    setError(null)
+
+    try {
+      setSearchResults(await searchDocuments(searchQuery.trim()))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not search documents.')
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="page-header">
@@ -102,6 +127,39 @@ function App() {
       </section>
 
       {error && <p className="message error">{error}</p>}
+
+      <section className="search-panel" aria-labelledby="search-title">
+        <div>
+          <h2 id="search-title">Semantic search</h2>
+          <p>Search across processed document chunks.</p>
+        </div>
+
+        <form onSubmit={handleSearch} className="search-form">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Ask about your processed documents"
+          />
+          <button type="submit" disabled={isSearching}>
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
+        </form>
+
+        {searchResults.length > 0 && (
+          <div className="search-results">
+            {searchResults.map((result) => (
+              <article className="search-result" key={result.chunkId}>
+                <div>
+                  <h3>{result.documentName}</h3>
+                  <p>{result.text}</p>
+                </div>
+                <span>{Math.round(result.score * 100)}%</span>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="documents-section" aria-labelledby="documents-title">
         <div className="section-heading">
