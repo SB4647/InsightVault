@@ -1,11 +1,14 @@
+using InsightVault.Api.Auth;
 using InsightVault.Application.Features.Search;
 using InsightVault.Application.Features.Search.DTOs;
 using InsightVault.Application.Features.Search.Queries;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InsightVault.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public sealed class SearchController(ISemanticSearchService semanticSearchService) : ControllerBase
 {
@@ -20,7 +23,7 @@ public sealed class SearchController(ISemanticSearchService semanticSearchServic
         try
         {
             var results = await semanticSearchService.SearchAsync(
-                new SearchDocumentsQuery(query, maxResults),
+                new SearchDocumentsQuery(query, User.GetRequiredUserId(), maxResults),
                 cancellationToken);
 
             return Ok(results);

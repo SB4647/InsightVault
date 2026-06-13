@@ -22,6 +22,7 @@
 }
 
 .upload-panel,
+.auth-panel,
 .search-panel,
 .chat-panel,
 .documents-section {
@@ -31,6 +32,7 @@
 }
 
 .upload-panel,
+.auth-panel,
 .search-panel,
 .chat-panel {
   display: flex;
@@ -41,6 +43,7 @@
 }
 
 .upload-panel h2,
+.auth-panel h2,
 .search-panel h2,
 .chat-panel h2,
 .documents-section h2,
@@ -49,6 +52,7 @@
 }
 
 .upload-form,
+.auth-form,
 .search-form,
 .chat-form {
   display: flex;
@@ -57,6 +61,7 @@
   flex-wrap: wrap;
 }
 
+.auth-panel,
 .search-panel,
 .chat-panel {
   align-items: stretch;
@@ -64,7 +69,13 @@
   margin-top: 24px;
 }
 
+.auth-panel {
+  align-items: center;
+  flex-direction: row;
+}
+
 .search-form input,
+.auth-form input,
 .chat-form textarea {
   min-width: min(100%, 420px);
   border: 1px solid var(--border);
@@ -149,6 +160,12 @@ button:disabled {
   opacity: 0.65;
 }
 
+.secondary-button {
+  border-color: var(--border);
+  background: white;
+  color: var(--text-strong);
+}
+
 input[type='file'] {
   max-width: 320px;
 }
@@ -227,6 +244,7 @@ dd {
   }
 
   .upload-panel,
+  .auth-panel,
   .search-panel,
   .chat-panel,
   .document-row,
@@ -236,6 +254,7 @@ dd {
   }
 
   .upload-panel,
+  .auth-panel,
   .search-panel,
   .chat-panel,
   .section-heading {

@@ -9,9 +9,13 @@ export interface SearchResultDto {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7227'
 
-export async function searchDocuments(query: string): Promise<SearchResultDto[]> {
+export async function searchDocuments(query: string, token: string): Promise<SearchResultDto[]> {
   const params = new URLSearchParams({ query })
-  const response = await fetch(`${API_BASE_URL}/api/search?${params.toString()}`)
+  const response = await fetch(`${API_BASE_URL}/api/search?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
 
   if (!response.ok) {
     const message = await response.text()

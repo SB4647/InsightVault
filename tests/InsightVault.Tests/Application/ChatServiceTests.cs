@@ -18,7 +18,7 @@ public class ChatServiceTests
             new StubChatCompletionService("unused"));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            service.AskAsync(new AskQuestionQuery(" ")));
+            service.AskAsync(new AskQuestionQuery(" ", "user-1")));
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class ChatServiceTests
             new StubSemanticSearchService([]),
             chatCompletion);
 
-        var response = await service.AskAsync(new AskQuestionQuery("What is covered?"));
+        var response = await service.AskAsync(new AskQuestionQuery("What is covered?", "user-1"));
 
         Assert.Equal("I could not find relevant document content to answer that question.", response.Answer);
         Assert.Empty(response.Sources);
@@ -51,12 +51,13 @@ public class ChatServiceTests
                 "InsightVault uses retrieval augmented generation over processed document chunks.",
                 0.91)
         };
+        var search = new StubSemanticSearchService(searchResults);
         var chatCompletion = new StubChatCompletionService("InsightVault answers questions using processed chunks.");
         var service = new ChatService(
-            new StubSemanticSearchService(searchResults),
+            search,
             chatCompletion);
 
-        var response = await service.AskAsync(new AskQuestionQuery("How does chat work?"));
+        var response = await service.AskAsync(new AskQuestionQuery("How does chat work?", "user-1"));
 
         Assert.Equal("InsightVault answers questions using processed chunks.", response.Answer);
         Assert.Collection(
@@ -68,9 +69,10 @@ public class ChatServiceTests
                 Assert.Equal(chunkId, source.ChunkId);
                 Assert.Equal(2, source.ChunkIndex);
                 Assert.Equal("InsightVault uses retrieval augmented generation over processed document chunks.", source.Text);
-                Assert.Equal(0.91, source.Score);
+        Assert.Equal(0.91, source.Score);
             });
         Assert.True(chatCompletion.WasCalled);
+        Assert.Equal("user-1", search.Query?.OwnerUserId);
         Assert.Equal("How does chat work?", chatCompletion.Question);
         Assert.Collection(
             chatCompletion.Contexts,
@@ -86,10 +88,13 @@ public class ChatServiceTests
     private sealed class StubSemanticSearchService(
         IReadOnlyList<SearchResultDto> results) : ISemanticSearchService
     {
+        public SearchDocumentsQuery? Query { get; private set; }
+
         public Task<IReadOnlyList<SearchResultDto>> SearchAsync(
             SearchDocumentsQuery query,
             CancellationToken cancellationToken = default)
         {
+            Query = query;
             return Task.FromResult(results);
         }
     }

@@ -39,7 +39,8 @@ public sealed class DocumentService(
             command.ContentType,
             command.SizeInBytes,
             blobName,
-            timeProvider.GetUtcNow().UtcDateTime);
+            timeProvider.GetUtcNow().UtcDateTime,
+            command.OwnerUserId);
 
         await documentRepository.AddAsync(document, cancellationToken);
         await documentRepository.SaveChangesAsync(cancellationToken);
@@ -47,9 +48,11 @@ public sealed class DocumentService(
         return MapToDto(document);
     }
 
-    public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
     {
-        var documents = await documentRepository.ListAsync(cancellationToken);
+        var documents = await documentRepository.ListAsync(ownerUserId, cancellationToken);
 
         return documents
             .OrderByDescending(document => document.UploadedAtUtc)

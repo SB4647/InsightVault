@@ -30,10 +30,16 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(document => document.UploadedAtUtc)
             .IsRequired();
 
+        builder.Property(document => document.OwnerUserId)
+            .HasMaxLength(450)
+            .IsRequired();
+
         builder.Property(document => document.Status)
             .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
+
+        builder.HasIndex(document => document.OwnerUserId);
 
         builder.Navigation(document => document.Chunks)
             .UsePropertyAccessMode(PropertyAccessMode.Field);

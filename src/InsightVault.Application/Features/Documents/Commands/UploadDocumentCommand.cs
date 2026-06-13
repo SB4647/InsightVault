@@ -4,4 +4,5 @@ public sealed record UploadDocumentCommand(
     string FileName,
     string ContentType,
     long SizeInBytes,
-    Stream Content);
+    Stream Content,
+    string OwnerUserId);

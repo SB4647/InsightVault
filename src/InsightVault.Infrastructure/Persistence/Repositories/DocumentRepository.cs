@@ -12,19 +12,27 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         await dbContext.Documents.AddAsync(document, cancellationToken);
     }
 
-    public async Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Document?> GetByIdAsync(
+        Guid id,
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
     {
         return await dbContext.Documents
             .Include(document => document.Chunks)
             .ThenInclude(chunk => chunk.Embedding)
-            .SingleOrDefaultAsync(document => document.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(
+                document => document.Id == id && document.OwnerUserId == ownerUserId,
+                cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Document>> ListAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Document>> ListAsync(
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
     {
         return await dbContext.Documents
             .AsNoTracking()
             .Include(document => document.Chunks)
+            .Where(document => document.OwnerUserId == ownerUserId)
             .OrderByDescending(document => document.UploadedAtUtc)
             .ToListAsync(cancellationToken);
     }
@@ -34,13 +42,17 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         return dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Document>> ListProcessedDocumentsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Document>> ListProcessedDocumentsAsync(
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
     {
         return await dbContext.Documents
             .AsNoTracking()
             .Include(document => document.Chunks)
             .ThenInclude(chunk => chunk.Embedding)
-            .Where(document => document.Status == DocumentProcessingStatus.Processed)
+            .Where(document =>
+                document.OwnerUserId == ownerUserId &&
+                document.Status == DocumentProcessingStatus.Processed)
             .ToListAsync(cancellationToken);
     }
 }

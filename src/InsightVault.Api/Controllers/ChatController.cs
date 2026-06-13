@@ -1,11 +1,14 @@
+using InsightVault.Api.Auth;
 using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Chat.DTOs;
 using InsightVault.Application.Features.Chat.Queries;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InsightVault.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public sealed class ChatController(IChatService chatService) : ControllerBase
 {
@@ -19,7 +22,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         try
         {
             var response = await chatService.AskAsync(
-                new AskQuestionQuery(request.Question, request.MaxSources ?? 5),
+                new AskQuestionQuery(request.Question, User.GetRequiredUserId(), request.MaxSources ?? 5),
                 cancellationToken);
 
             return Ok(response);

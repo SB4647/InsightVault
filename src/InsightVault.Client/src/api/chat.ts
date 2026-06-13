@@ -14,11 +14,12 @@ export interface ChatResponseDto {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7227'
 
-export async function askQuestion(question: string): Promise<ChatResponseDto> {
+export async function askQuestion(question: string, token: string): Promise<ChatResponseDto> {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ question }),
   })

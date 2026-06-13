@@ -16,7 +16,8 @@ public class DocumentProcessingServiceTests
             "application/pdf",
             256,
             "documents/sample.pdf",
-            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc));
+            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
+            "user-1");
         var repository = new InMemoryDocumentRepository(document);
         var blobStorage = new RecordingBlobStorageService();
         var extractor = new StubTextExtractionService("alpha beta gamma delta epsilon zeta eta theta iota kappa lambda");
@@ -25,7 +26,7 @@ public class DocumentProcessingServiceTests
         var service = new DocumentProcessingService(repository, blobStorage, extractor, chunker, embeddings);
 
         var result = await service.ProcessAsync(
-            new ProcessDocumentCommand(document.Id, ChunkSize: 30, OverlapSize: 5));
+            new ProcessDocumentCommand(document.Id, "user-1", ChunkSize: 30, OverlapSize: 5));
 
         Assert.Equal(document.Id, result.DocumentId);
         Assert.True(result.ChunkCount > 1);
@@ -49,7 +50,29 @@ public class DocumentProcessingServiceTests
             new StubEmbeddingService());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.ProcessAsync(new ProcessDocumentCommand(Guid.NewGuid())));
+            service.ProcessAsync(new ProcessDocumentCommand(Guid.NewGuid(), "user-1")));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_WhenDocumentBelongsToAnotherUser_ThrowsInvalidOperationException()
+    {
+        var document = Document.Create(
+            "sample.pdf",
+            "application/pdf",
+            256,
+            "documents/sample.pdf",
+            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
+            "user-2");
+        var repository = new InMemoryDocumentRepository(document);
+        var service = new DocumentProcessingService(
+            repository,
+            new RecordingBlobStorageService(),
+            new StubTextExtractionService("content"),
+            new DocumentChunkingService(),
+            new StubEmbeddingService());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ProcessAsync(new ProcessDocumentCommand(document.Id, "user-1")));
     }
 
     private sealed class InMemoryDocumentRepository(params Document[] documents) : IDocumentRepository
@@ -64,14 +87,21 @@ public class DocumentProcessingServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<Document?> GetByIdAsync(
+            Guid id,
+            string ownerUserId,
+            CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(_documents.SingleOrDefault(document => document.Id == id));
+            return Task.FromResult(_documents.SingleOrDefault(document =>
+                document.Id == id && document.OwnerUserId == ownerUserId));
         }
 
-        public Task<IReadOnlyList<Document>> ListAsync(CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<Document>> ListAsync(
+            string ownerUserId,
+            CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<Document>>(_documents);
+            return Task.FromResult<IReadOnlyList<Document>>(
+                _documents.Where(document => document.OwnerUserId == ownerUserId).ToList());
         }
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)

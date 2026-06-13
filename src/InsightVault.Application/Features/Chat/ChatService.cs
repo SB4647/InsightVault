@@ -23,13 +23,18 @@ public sealed class ChatService(
             throw new ArgumentException("Question is required.", nameof(query));
         }
 
+        if (string.IsNullOrWhiteSpace(query.OwnerUserId))
+        {
+            throw new ArgumentException("Owner user id is required.", nameof(query));
+        }
+
         if (query.MaxSources <= 0)
         {
             throw new ArgumentException("Max sources must be greater than zero.", nameof(query));
         }
 
         var searchResults = await semanticSearchService.SearchAsync(
-            new SearchDocumentsQuery(query.Question, query.MaxSources),
+            new SearchDocumentsQuery(query.Question, query.OwnerUserId, query.MaxSources),
             cancellationToken);
 
         if (searchResults.Count == 0)

@@ -1,14 +1,17 @@
+using InsightVault.Api.Auth;
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Commands;
 using InsightVault.Application.Features.Documents.DTOs;
 using InsightVault.Application.Features.Documents.Processing;
 using InsightVault.Application.Features.Documents.Processing.Commands;
 using InsightVault.Application.Features.Documents.Processing.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InsightVault.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public sealed class DocumentsController(
     IDocumentService documentService,
@@ -19,7 +22,9 @@ public sealed class DocumentsController(
     public async Task<ActionResult<IReadOnlyList<DocumentDto>>> GetDocuments(
         CancellationToken cancellationToken)
     {
-        var documents = await documentService.GetDocumentsAsync(cancellationToken);
+        var documents = await documentService.GetDocumentsAsync(
+            User.GetRequiredUserId(),
+            cancellationToken);
         return Ok(documents);
     }
 
@@ -42,7 +47,8 @@ public sealed class DocumentsController(
                 file.FileName,
                 file.ContentType,
                 file.Length,
-                stream),
+                stream,
+                User.GetRequiredUserId()),
             cancellationToken);
 
         return CreatedAtAction(
@@ -61,7 +67,7 @@ public sealed class DocumentsController(
         try
         {
             var result = await documentProcessingService.ProcessAsync(
-                new ProcessDocumentCommand(id),
+                new ProcessDocumentCommand(id, User.GetRequiredUserId()),
                 cancellationToken);
 
             return Ok(result);

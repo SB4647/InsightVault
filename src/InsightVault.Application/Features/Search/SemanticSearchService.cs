@@ -18,13 +18,20 @@ public sealed class SemanticSearchService(
             throw new ArgumentException("Search query is required.", nameof(query));
         }
 
+        if (string.IsNullOrWhiteSpace(query.OwnerUserId))
+        {
+            throw new ArgumentException("Owner user id is required.", nameof(query));
+        }
+
         if (query.MaxResults <= 0)
         {
             throw new ArgumentException("Max results must be greater than zero.", nameof(query));
         }
 
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query.Query, cancellationToken);
-        var documents = await documentSearchRepository.ListProcessedDocumentsAsync(cancellationToken);
+        var documents = await documentSearchRepository.ListProcessedDocumentsAsync(
+            query.OwnerUserId,
+            cancellationToken);
 
         return documents
             .SelectMany(document => BuildResults(document, queryEmbedding))

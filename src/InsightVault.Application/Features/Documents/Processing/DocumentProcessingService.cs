@@ -16,7 +16,10 @@ public sealed class DocumentProcessingService(
         ProcessDocumentCommand command,
         CancellationToken cancellationToken = default)
     {
-        var document = await documentRepository.GetByIdAsync(command.DocumentId, cancellationToken)
+        var document = await documentRepository.GetByIdAsync(
+                command.DocumentId,
+                command.OwnerUserId,
+                cancellationToken)
             ?? throw new InvalidOperationException($"Document '{command.DocumentId}' was not found.");
 
         document.StartProcessing();

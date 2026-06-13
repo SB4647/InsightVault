@@ -15,7 +15,8 @@ public class Document
         string contentType,
         long sizeInBytes,
         string blobName,
-        DateTime uploadedAtUtc)
+        DateTime uploadedAtUtc,
+        string ownerUserId)
     {
         Id = Guid.NewGuid();
         OriginalFileName = originalFileName;
@@ -23,6 +24,7 @@ public class Document
         SizeInBytes = sizeInBytes;
         BlobName = blobName;
         UploadedAtUtc = uploadedAtUtc;
+        OwnerUserId = ownerUserId;
         Status = DocumentProcessingStatus.Uploaded;
     }
 
@@ -32,6 +34,7 @@ public class Document
     public long SizeInBytes { get; private set; }
     public string BlobName { get; private set; } = string.Empty;
     public DateTime UploadedAtUtc { get; private set; }
+    public string OwnerUserId { get; private set; } = string.Empty;
     public DocumentProcessingStatus Status { get; private set; }
     public IReadOnlyCollection<DocumentChunk> Chunks => _chunks.AsReadOnly();
 
@@ -40,7 +43,8 @@ public class Document
         string contentType,
         long sizeInBytes,
         string blobName,
-        DateTime uploadedAtUtc)
+        DateTime uploadedAtUtc,
+        string ownerUserId)
     {
         if (string.IsNullOrWhiteSpace(originalFileName))
         {
@@ -67,12 +71,18 @@ public class Document
             throw new ArgumentException("Upload timestamp must be UTC.", nameof(uploadedAtUtc));
         }
 
+        if (string.IsNullOrWhiteSpace(ownerUserId))
+        {
+            throw new ArgumentException("Owner user id is required.", nameof(ownerUserId));
+        }
+
         return new Document(
             originalFileName.Trim(),
             contentType.Trim(),
             sizeInBytes,
             blobName.Trim(),
-            uploadedAtUtc);
+            uploadedAtUtc,
+            ownerUserId.Trim());
     }
 
     public void StartProcessing()

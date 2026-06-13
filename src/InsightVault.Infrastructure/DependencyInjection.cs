@@ -2,9 +2,11 @@ using InsightVault.Application.Interfaces;
 using InsightVault.Infrastructure.Chat;
 using InsightVault.Infrastructure.Documents;
 using InsightVault.Infrastructure.Embeddings;
+using InsightVault.Infrastructure.Identity;
 using InsightVault.Infrastructure.Persistence;
 using InsightVault.Infrastructure.Persistence.Repositories;
 using InsightVault.Infrastructure.Storage;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,15 @@ public static class DependencyInjection
     {
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireNonAlphanumeric = false;
+            })
+            .AddEntityFrameworkStores<ApplicationDbContext>();
 
         services.Configure<BlobStorageOptions>(options =>
         {

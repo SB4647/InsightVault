@@ -7,15 +7,24 @@ import { searchDocuments } from './api/search'
 import type { SearchResultDto } from './api/search'
 import { askQuestion } from './api/chat'
 import type { ChatResponseDto } from './api/chat'
+import { login, register } from './api/auth'
+import type { AuthResponse } from './api/auth'
+
+const AUTH_STORAGE_KEY = 'insightvault.auth'
 
 function App() {
   const [documents, setDocuments] = useState<DocumentDto[]>([])
+  const [auth, setAuth] = useState<AuthResponse | null>(() => loadStoredAuth())
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResultDto[]>([])
   const [chatQuestion, setChatQuestion] = useState('')
   const [chatResponse, setChatResponse] = useState<ChatResponseDto | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(() => Boolean(auth))
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [isAsking, setIsAsking] = useState(false)
@@ -23,20 +32,90 @@ function App() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadDocuments()
-  }, [])
+    if (!auth) {
+      return
+    }
 
-  async function loadDocuments() {
+    const currentAuth = auth
+    let isActive = true
+
+    async function loadInitialDocuments() {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const loadedDocuments = await getDocuments(currentAuth.token)
+        if (isActive) {
+          setDocuments(loadedDocuments)
+        }
+      } catch (err) {
+        if (isActive) {
+          setError(err instanceof Error ? err.message : 'Could not load documents.')
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void loadInitialDocuments()
+
+    return () => {
+      isActive = false
+    }
+  }, [auth])
+
+  async function loadDocuments(token = auth?.token) {
+    if (!token) {
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      setDocuments(await getDocuments())
+      setDocuments(await getDocuments(token))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load documents.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  async function handleAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!email.trim() || !password) {
+      setError('Email and password are required.')
+      return
+    }
+
+    setIsAuthenticating(true)
+    setError(null)
+
+    try {
+      const result =
+        authMode === 'login'
+          ? await login(email.trim(), password)
+          : await register(email.trim(), password)
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result))
+      setAuth(result)
+      setPassword('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not authenticate.')
+    } finally {
+      setIsAuthenticating(false)
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuth(null)
+    setDocuments([])
+    setSearchResults([])
+    setChatResponse(null)
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -51,7 +130,7 @@ function App() {
     setError(null)
 
     try {
-      const uploadedDocument = await uploadDocument(selectedFile)
+      const uploadedDocument = await uploadDocument(selectedFile, auth?.token ?? '')
       setDocuments((current) => [uploadedDocument, ...current])
       setSelectedFile(null)
       event.currentTarget.reset()
@@ -67,7 +146,7 @@ function App() {
     setError(null)
 
     try {
-      const result = await processDocument(documentId)
+      const result = await processDocument(documentId, auth?.token ?? '')
       setDocuments((current) =>
         current.map((document) =>
           document.id === documentId
@@ -94,7 +173,7 @@ function App() {
     setError(null)
 
     try {
-      setSearchResults(await searchDocuments(searchQuery.trim()))
+      setSearchResults(await searchDocuments(searchQuery.trim(), auth?.token ?? ''))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not search documents.')
     } finally {
@@ -114,7 +193,7 @@ function App() {
     setError(null)
 
     try {
-      setChatResponse(await askQuestion(chatQuestion.trim()))
+      setChatResponse(await askQuestion(chatQuestion.trim(), auth?.token ?? ''))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not answer question.')
     } finally {
@@ -128,12 +207,64 @@ function App() {
         <p className="eyebrow">InsightVault</p>
         <h1>Document Library</h1>
         <p>
-          Upload source documents and keep their file metadata available for the
-          processing, search, and chat phases later.
+          Upload source documents, process them, search semantically, and ask grounded
+          questions across your private library.
         </p>
       </section>
 
-      <section className="upload-panel" aria-labelledby="upload-title">
+      <section className="auth-panel" aria-labelledby="auth-title">
+        {auth ? (
+          <>
+            <div>
+              <h2 id="auth-title">Signed in</h2>
+              <p>{auth.email}</p>
+            </div>
+            <button type="button" onClick={handleLogout}>
+              Log out
+            </button>
+          </>
+        ) : (
+          <>
+            <div>
+              <h2 id="auth-title">{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
+              <p>Sign in to access your document library.</p>
+            </div>
+
+            <form onSubmit={handleAuth} className="auth-form">
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Email"
+                autoComplete="email"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Password"
+                autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+              />
+              <button type="submit" disabled={isAuthenticating}>
+                {isAuthenticating ? 'Working...' : authMode === 'login' ? 'Log in' : 'Register'}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+              >
+                {authMode === 'login' ? 'Need an account?' : 'Already registered?'}
+              </button>
+            </form>
+          </>
+        )}
+      </section>
+
+      {error && <p className="message error">{error}</p>}
+
+      {auth && (
+        <>
+          <section className="upload-panel" aria-labelledby="upload-title">
         <div>
           <h2 id="upload-title">Upload document</h2>
           <p>Phase 1 stores the file and metadata only.</p>
@@ -149,11 +280,9 @@ function App() {
             {isUploading ? 'Uploading...' : 'Upload'}
           </button>
         </form>
-      </section>
+          </section>
 
-      {error && <p className="message error">{error}</p>}
-
-      <section className="search-panel" aria-labelledby="search-title">
+          <section className="search-panel" aria-labelledby="search-title">
         <div>
           <h2 id="search-title">Semantic search</h2>
           <p>Search across processed document chunks.</p>
@@ -184,9 +313,9 @@ function App() {
             ))}
           </div>
         )}
-      </section>
+          </section>
 
-      <section className="chat-panel" aria-labelledby="chat-title">
+          <section className="chat-panel" aria-labelledby="chat-title">
         <div>
           <h2 id="chat-title">RAG chat</h2>
           <p>Ask a question and get an answer grounded in processed document chunks.</p>
@@ -227,12 +356,12 @@ function App() {
             )}
           </div>
         )}
-      </section>
+          </section>
 
-      <section className="documents-section" aria-labelledby="documents-title">
+          <section className="documents-section" aria-labelledby="documents-title">
         <div className="section-heading">
           <h2 id="documents-title">Uploaded documents</h2>
-          <button type="button" onClick={loadDocuments} disabled={isLoading}>
+          <button type="button" onClick={() => loadDocuments()} disabled={isLoading}>
             Refresh
           </button>
         </div>
@@ -278,9 +407,25 @@ function App() {
             ))}
           </div>
         )}
-      </section>
+          </section>
+        </>
+      )}
     </main>
   )
+}
+
+function loadStoredAuth() {
+  const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    return JSON.parse(raw) as AuthResponse
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    return null
+  }
 }
 
 function formatBytes(bytes: number) {

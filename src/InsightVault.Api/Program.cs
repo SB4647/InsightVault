@@ -1,8 +1,12 @@
+using System.Text;
+using InsightVault.Api.Auth;
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Processing;
 using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Search;
 using InsightVault.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,8 +17,28 @@ builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 builder.Services.AddScoped<ISemanticSearchService, SemanticSearchService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+
+var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey))
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
@@ -42,6 +66,7 @@ app.UseHttpsRedirection();
 
 app.UseCors("ClientApp");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

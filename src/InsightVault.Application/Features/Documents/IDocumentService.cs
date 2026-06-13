@@ -10,5 +10,7 @@ public interface IDocumentService
         UploadDocumentCommand command,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(
+        string ownerUserId,
+        CancellationToken cancellationToken = default);
 }

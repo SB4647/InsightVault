@@ -15,13 +15,15 @@ public class DocumentTests
             "application/pdf",
             1024,
             "documents/requirements.pdf",
-            uploadedAt);
+            uploadedAt,
+            "user-1");
 
         Assert.Equal("requirements.pdf", document.OriginalFileName);
         Assert.Equal("application/pdf", document.ContentType);
         Assert.Equal(1024, document.SizeInBytes);
         Assert.Equal("documents/requirements.pdf", document.BlobName);
         Assert.Equal(uploadedAt, document.UploadedAtUtc);
+        Assert.Equal("user-1", document.OwnerUserId);
         Assert.Equal(DocumentProcessingStatus.Uploaded, document.Status);
     }
 
@@ -43,6 +45,21 @@ public class DocumentTests
             contentType,
             sizeInBytes,
             blobName,
-            uploadedAt));
+            uploadedAt,
+            "user-1"));
+    }
+
+    [Fact]
+    public void Create_WithBlankOwnerUserId_ThrowsArgumentException()
+    {
+        var uploadedAt = new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc);
+
+        Assert.Throws<ArgumentException>(() => Document.Create(
+            "file.pdf",
+            "application/pdf",
+            1024,
+            "documents/file.pdf",
+            uploadedAt,
+            " "));
     }
 }

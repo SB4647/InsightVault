@@ -8,14 +8,18 @@ The current implementation covers:
 - Phase 2: PDF text extraction, document chunking, embedding generation, and vector persistence
 - Phase 3: semantic search, similarity ranking, and search API
 - Phase 4: RAG chat, grounded answers, and source citations
+- Phase 5A: local user accounts, JWT authentication, and document ownership
 
-Authentication, background jobs, Azure AI Search, and agents are not implemented yet.
+Shared document permissions, document versioning, background jobs, Azure AI Search, and agents are not implemented yet.
 
 ---
 
 ## Current Features
 
 - Upload PDF documents from the React client
+- Register and log in with local user accounts
+- Protect document, search, and chat APIs with JWT bearer authentication
+- Scope uploaded documents, search results, and chat answers to the current user
 - Store uploaded files in Azure Blob Storage
 - Store document metadata in SQL Server
 - List uploaded documents
@@ -62,6 +66,7 @@ Infrastructure implements Application interfaces for:
 
 - HTTP endpoints
 - Request/response handling
+- JWT authentication and authorization
 - Dependency injection composition
 - CORS and API configuration
 
@@ -71,6 +76,7 @@ Infrastructure implements Application interfaces for:
 - Document processing workflow
 - Semantic search workflow
 - RAG chat workflow
+- Owner-scoped document access contracts
 - Chunking service
 - DTOs and commands
 - Interfaces for storage, repositories, text extraction, embeddings, and chat completion
@@ -86,6 +92,7 @@ Infrastructure implements Application interfaces for:
 #### `InsightVault.Infrastructure`
 
 - EF Core `ApplicationDbContext`
+- ASP.NET Core Identity user persistence
 - SQL Server repository implementation
 - Azure Blob Storage implementation
 - PdfPig PDF text extraction
@@ -97,6 +104,7 @@ Infrastructure implements Application interfaces for:
 
 - React + TypeScript frontend built with Vite
 - Upload form
+- Login/register form
 - Uploaded document list
 - Process document action
 - Semantic search panel
@@ -110,6 +118,56 @@ Infrastructure implements Application interfaces for:
 ---
 
 ## API Endpoints
+
+Protected document, search, and chat endpoints require:
+
+```http
+Authorization: Bearer {token}
+```
+
+### Register
+
+```http
+POST /api/auth/register
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "Password123"
+}
+```
+
+Returns:
+
+- `userId`
+- `email`
+- `token`
+
+### Login
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "Password123"
+}
+```
+
+Returns:
+
+- `userId`
+- `email`
+- `token`
 
 ### Upload Document
 
@@ -230,6 +288,12 @@ Returns:
     "EmbeddingDeploymentName": "",
     "ChatDeploymentName": "",
     "ApiVersion": "2024-10-21"
+  },
+  "Jwt": {
+    "Issuer": "InsightVault",
+    "Audience": "InsightVault.Client",
+    "SigningKey": "development-only-signing-key-change-with-user-secrets",
+    "ExpiresMinutes": 60
   }
 }
 ```
@@ -242,6 +306,7 @@ dotnet user-secrets set "AzureOpenAI:Endpoint" "https://<resource-name>.openai.a
 dotnet user-secrets set "AzureOpenAI:ApiKey" "<azure-openai-api-key>" --project src/InsightVault.Api
 dotnet user-secrets set "AzureOpenAI:EmbeddingDeploymentName" "<embedding-deployment-name>" --project src/InsightVault.Api
 dotnet user-secrets set "AzureOpenAI:ChatDeploymentName" "<chat-deployment-name>" --project src/InsightVault.Api
+dotnet user-secrets set "Jwt:SigningKey" "<at-least-32-character-signing-key>" --project src/InsightVault.Api
 ```
 
 ---
@@ -258,6 +323,7 @@ Current migrations:
 
 - `InitialCreate`: creates `Documents`
 - `AddDocumentProcessing`: creates `DocumentChunks` and `Embeddings`
+- `AddIdentityAndDocumentOwnership`: creates ASP.NET Core Identity tables and adds `Documents.OwnerUserId`
 
 ---
 
@@ -356,9 +422,10 @@ npm run lint
 
 ### Phase 5: Advanced Features
 
-- [ ] Authentication
-- [ ] User accounts
-- [ ] Document permissions
+- [x] Authentication
+- [x] User accounts
+- [x] Document ownership
+- [ ] Shared document permissions
 - [ ] Document versioning
 
 ---
@@ -372,5 +439,6 @@ InsightVault is a learning and portfolio project designed to demonstrate:
 - SQL Server and Azure Blob Storage integration
 - Azure OpenAI embedding integration
 - Azure OpenAI chat completion integration
+- ASP.NET Core Identity and JWT authentication
 - React + TypeScript frontend development
-- Future authentication and document permission capabilities
+- Future shared permissions and document versioning capabilities
