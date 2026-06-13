@@ -66,6 +66,7 @@ public sealed class DocumentService(
             document.SizeInBytes,
             document.BlobName,
             document.UploadedAtUtc,
-            document.Status.ToString());
+            document.Status.ToString(),
+            document.Chunks.Count);
     }
 }

@@ -7,4 +7,5 @@ public sealed record DocumentDto(
     long SizeInBytes,
     string BlobName,
     DateTime UploadedAtUtc,
-    string Status);
+    string Status,
+    int ChunkCount);

@@ -4,6 +4,8 @@ namespace InsightVault.Domain.Entities;
 
 public class Document
 {
+    private readonly List<DocumentChunk> _chunks = [];
+
     private Document()
     {
     }
@@ -31,6 +33,7 @@ public class Document
     public string BlobName { get; private set; } = string.Empty;
     public DateTime UploadedAtUtc { get; private set; }
     public DocumentProcessingStatus Status { get; private set; }
+    public IReadOnlyCollection<DocumentChunk> Chunks => _chunks.AsReadOnly();
 
     public static Document Create(
         string originalFileName,
@@ -70,5 +73,30 @@ public class Document
             sizeInBytes,
             blobName.Trim(),
             uploadedAtUtc);
+    }
+
+    public void StartProcessing()
+    {
+        Status = DocumentProcessingStatus.Processing;
+        _chunks.Clear();
+    }
+
+    public void CompleteProcessing(IEnumerable<DocumentChunk> chunks)
+    {
+        var chunkList = chunks.ToList();
+
+        if (chunkList.Count == 0)
+        {
+            throw new ArgumentException("At least one chunk is required.", nameof(chunks));
+        }
+
+        _chunks.Clear();
+        _chunks.AddRange(chunkList);
+        Status = DocumentProcessingStatus.Processed;
+    }
+
+    public void MarkProcessingFailed()
+    {
+        Status = DocumentProcessingStatus.Failed;
     }
 }

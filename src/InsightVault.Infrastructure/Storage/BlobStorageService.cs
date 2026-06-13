@@ -49,4 +49,15 @@ public sealed class BlobStorageService : IBlobStorageService
             new BlobHttpHeaders { ContentType = contentType },
             cancellationToken: cancellationToken);
     }
+
+    public async Task<Stream> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
+    {
+        var blobClient = _containerClient.GetBlobClient(blobName);
+        var stream = new MemoryStream();
+
+        await blobClient.DownloadToAsync(stream, cancellationToken);
+        stream.Position = 0;
+
+        return stream;
+    }
 }

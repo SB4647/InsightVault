@@ -1,4 +1,6 @@
 using InsightVault.Application.Interfaces;
+using InsightVault.Infrastructure.Documents;
+using InsightVault.Infrastructure.Embeddings;
 using InsightVault.Infrastructure.Persistence;
 using InsightVault.Infrastructure.Persistence.Repositories;
 using InsightVault.Infrastructure.Storage;
@@ -24,8 +26,19 @@ public static class DependencyInjection
             options.ContainerName = section["ContainerName"] ?? "documents";
         });
 
+        services.Configure<AzureOpenAiEmbeddingOptions>(options =>
+        {
+            var section = configuration.GetSection("AzureOpenAI");
+            options.Endpoint = section["Endpoint"] ?? string.Empty;
+            options.ApiKey = section["ApiKey"] ?? string.Empty;
+            options.DeploymentName = section["EmbeddingDeploymentName"] ?? string.Empty;
+            options.ApiVersion = section["ApiVersion"] ?? "2024-02-01";
+        });
+
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IBlobStorageService, BlobStorageService>();
+        services.AddScoped<ITextExtractionService, PdfTextExtractionService>();
+        services.AddHttpClient<IEmbeddingService, AzureOpenAiEmbeddingService>();
 
         return services;
     }

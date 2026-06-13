@@ -34,5 +34,8 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
+
+        builder.Navigation(document => document.Chunks)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

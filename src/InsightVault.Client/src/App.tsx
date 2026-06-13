@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
-import { getDocuments, uploadDocument } from './api/documents'
+import { getDocuments, processDocument, uploadDocument } from './api/documents'
 import type { DocumentDto } from './api/documents'
 
 function App() {
@@ -9,6 +9,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,6 +49,26 @@ function App() {
       setError(err instanceof Error ? err.message : 'Could not upload document.')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  async function handleProcess(documentId: string) {
+    setProcessingDocumentId(documentId)
+    setError(null)
+
+    try {
+      const result = await processDocument(documentId)
+      setDocuments((current) =>
+        current.map((document) =>
+          document.id === documentId
+            ? { ...document, status: result.status, chunkCount: result.chunkCount }
+            : document,
+        ),
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not process document.')
+    } finally {
+      setProcessingDocumentId(null)
     }
   }
 
@@ -112,10 +133,21 @@ function App() {
                     <dd>{document.status}</dd>
                   </div>
                   <div>
+                    <dt>Chunks</dt>
+                    <dd>{document.chunkCount}</dd>
+                  </div>
+                  <div>
                     <dt>Uploaded</dt>
                     <dd>{new Date(document.uploadedAtUtc).toLocaleString()}</dd>
                   </div>
                 </dl>
+                <button
+                  type="button"
+                  onClick={() => handleProcess(document.id)}
+                  disabled={processingDocumentId === document.id || document.status === 'Processed'}
+                >
+                  {processingDocumentId === document.id ? 'Processing...' : 'Process'}
+                </button>
               </article>
             ))}
           </div>

@@ -97,8 +97,9 @@ input[type='file'] {
 
 .document-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 24px;
+  align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
 }
@@ -119,7 +120,7 @@ input[type='file'] {
 
 dl {
   display: grid;
-  grid-template-columns: repeat(3, max-content);
+  grid-template-columns: repeat(4, max-content);
   gap: 20px;
   margin: 0;
 }

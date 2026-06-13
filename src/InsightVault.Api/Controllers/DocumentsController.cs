@@ -1,13 +1,18 @@
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Commands;
 using InsightVault.Application.Features.Documents.DTOs;
+using InsightVault.Application.Features.Documents.Processing;
+using InsightVault.Application.Features.Documents.Processing.Commands;
+using InsightVault.Application.Features.Documents.Processing.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InsightVault.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class DocumentsController(IDocumentService documentService) : ControllerBase
+public sealed class DocumentsController(
+    IDocumentService documentService,
+    IDocumentProcessingService documentProcessingService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<DocumentDto>), StatusCodes.Status200OK)]
@@ -44,5 +49,26 @@ public sealed class DocumentsController(IDocumentService documentService) : Cont
             nameof(GetDocuments),
             new { id = document.Id },
             document);
+    }
+
+    [HttpPost("{id:guid}/process")]
+    [ProducesResponseType(typeof(DocumentProcessingResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DocumentProcessingResultDto>> ProcessDocument(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await documentProcessingService.ProcessAsync(
+                new ProcessDocumentCommand(id),
+                cancellationToken);
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("was not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
     }
 }

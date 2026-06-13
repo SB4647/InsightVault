@@ -11,10 +11,19 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         await dbContext.Documents.AddAsync(document, cancellationToken);
     }
 
+    public async Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Documents
+            .Include(document => document.Chunks)
+            .ThenInclude(chunk => chunk.Embedding)
+            .SingleOrDefaultAsync(document => document.Id == id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Document>> ListAsync(CancellationToken cancellationToken = default)
     {
         return await dbContext.Documents
             .AsNoTracking()
+            .Include(document => document.Chunks)
             .OrderByDescending(document => document.UploadedAtUtc)
             .ToListAsync(cancellationToken);
     }

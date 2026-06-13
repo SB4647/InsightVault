@@ -22,6 +22,7 @@ public class DocumentServiceTests
         Assert.Equal("Report.pdf", result.OriginalFileName);
         Assert.Equal("application/pdf", result.ContentType);
         Assert.Equal(3, result.SizeInBytes);
+        Assert.Equal(0, result.ChunkCount);
         Assert.Equal(new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc), result.UploadedAtUtc);
         Assert.EndsWith(".pdf", result.BlobName);
         Assert.Equal(result.BlobName, blobStorage.UploadedBlobName);
@@ -69,6 +70,11 @@ public class DocumentServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Documents.SingleOrDefault(document => document.Id == id));
+        }
+
         public Task<IReadOnlyList<Document>> ListAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<Document>>(Documents);
@@ -95,6 +101,11 @@ public class DocumentServiceTests
             UploadedBlobName = blobName;
             UploadedContentType = contentType;
             return Task.CompletedTask;
+        }
+
+        public Task<Stream> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Stream>(new MemoryStream());
         }
     }
 
