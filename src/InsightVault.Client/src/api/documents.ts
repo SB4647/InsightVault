@@ -19,7 +19,12 @@ export async function getDocuments(token: string): Promise<DocumentDto[]> {
   })
 
   if (!response.ok) {
-    throw new Error('Could not load documents.')
+    if (response.status === 401) {
+      throw new Error('Your session has expired. Please log in again.')
+    }
+
+    const message = await response.text()
+    throw new Error(message || 'Could not load documents.')
   }
 
   return response.json()
