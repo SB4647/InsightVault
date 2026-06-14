@@ -46,6 +46,11 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         return dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public void Remove(Document document)
+    {
+        dbContext.Documents.Remove(document);
+    }
+
     public async Task<IReadOnlyList<Document>> ListProcessedDocumentsAsync(
         string ownerUserId,
         CancellationToken cancellationToken = default)

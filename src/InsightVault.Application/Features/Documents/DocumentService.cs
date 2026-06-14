@@ -91,6 +91,21 @@ public sealed class DocumentService(
             permission.Level.ToString());
     }
 
+    public async Task DeleteDocumentAsync(
+        DeleteDocumentCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await documentRepository.GetByIdAsync(
+                command.DocumentId,
+                command.OwnerUserId,
+                cancellationToken)
+            ?? throw new InvalidOperationException($"Document '{command.DocumentId}' was not found.");
+
+        await blobStorageService.DeleteAsync(document.BlobName, cancellationToken);
+        documentRepository.Remove(document);
+        await documentRepository.SaveChangesAsync(cancellationToken);
+    }
+
     private static DocumentDto MapToDto(Document document, string currentUserId)
     {
         var isOwner = document.OwnerUserId == currentUserId;

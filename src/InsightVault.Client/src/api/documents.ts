@@ -95,6 +95,18 @@ export async function shareDocument(
   return response.json()
 }
 
+export async function deleteDocument(documentId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Could not delete document.')
+  }
+}
+
 function authHeaders(token: string) {
   return {
     Authorization: `Bearer ${token}`,

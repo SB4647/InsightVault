@@ -104,6 +104,11 @@ public class DocumentProcessingServiceTests
                 _documents.Where(document => document.OwnerUserId == ownerUserId).ToList());
         }
 
+        public void Remove(Document document)
+        {
+            _documents.Remove(document);
+        }
+
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveChangesCallCount++;
@@ -128,6 +133,11 @@ public class DocumentProcessingServiceTests
         {
             DownloadedBlobName = blobName;
             return Task.FromResult<Stream>(new MemoryStream([1, 2, 3]));
+        }
+
+        public Task DeleteAsync(string blobName, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 

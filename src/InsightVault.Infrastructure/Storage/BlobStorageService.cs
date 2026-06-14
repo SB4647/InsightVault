@@ -60,4 +60,10 @@ public sealed class BlobStorageService : IBlobStorageService
 
         return stream;
     }
+
+    public async Task DeleteAsync(string blobName, CancellationToken cancellationToken = default)
+    {
+        var blobClient = _containerClient.GetBlobClient(blobName);
+        await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+    }
 }

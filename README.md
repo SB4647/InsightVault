@@ -23,6 +23,7 @@ Document versioning, background jobs, Azure AI Search, and agents are not implem
 - Scope uploaded documents, search results, and chat answers to the current user
 - Share owned documents with other registered users as viewers
 - Include shared viewer documents in document lists, semantic search, and RAG chat
+- Delete owned documents from the UI and API
 - Store uploaded files in Azure Blob Storage
 - Store document metadata in SQL Server
 - List uploaded documents
@@ -112,6 +113,7 @@ Infrastructure implements Application interfaces for:
 - Uploaded document list
 - Share document form for owned documents
 - Process document action
+- Delete document action for owned documents
 - Semantic search panel
 - RAG chat panel
 - Status and chunk count display
@@ -247,6 +249,16 @@ Returns:
 - `sharedWithUserId`
 - `sharedWithEmail`
 - `accessLevel`
+
+### Delete Document
+
+```http
+DELETE /api/documents/{id}
+```
+
+Only the document owner can delete a document.
+
+Deleting removes the uploaded blob and the document metadata. Related chunks, embeddings, and permissions are removed through EF Core cascade behavior.
 
 ### Semantic Search
 
@@ -438,6 +450,7 @@ npm run lint
 - [x] Save files to Azure Blob Storage
 - [x] Store metadata in SQL Server
 - [x] Display uploaded documents
+- [x] Delete owned documents
 
 ### Phase 2: Document Processing
 

@@ -168,6 +168,11 @@ button:disabled {
   color: var(--text-strong);
 }
 
+.danger-button {
+  border-color: #dc2626;
+  background: #dc2626;
+}
+
 input[type='file'] {
   max-width: 320px;
 }

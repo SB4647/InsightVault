@@ -9,4 +9,6 @@ public interface IBlobStorageService
         CancellationToken cancellationToken = default);
 
     Task<Stream> DownloadAsync(string blobName, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(string blobName, CancellationToken cancellationToken = default);
 }

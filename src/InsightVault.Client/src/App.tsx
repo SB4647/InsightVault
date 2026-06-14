@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
-import { getDocuments, processDocument, shareDocument, uploadDocument } from './api/documents'
+import {
+  deleteDocument,
+  getDocuments,
+  processDocument,
+  shareDocument,
+  uploadDocument,
+} from './api/documents'
 import type { DocumentDto } from './api/documents'
 import { searchDocuments } from './api/search'
 import type { SearchResultDto } from './api/search'
@@ -31,6 +37,7 @@ function App() {
   const [isAsking, setIsAsking] = useState(false)
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null)
   const [sharingDocumentId, setSharingDocumentId] = useState<string | null>(null)
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -122,6 +129,7 @@ function App() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const form = event.currentTarget
 
     if (!selectedFile) {
       setError('Choose a document before uploading.')
@@ -135,7 +143,7 @@ function App() {
       const uploadedDocument = await uploadDocument(selectedFile, auth?.token ?? '')
       setDocuments((current) => [uploadedDocument, ...current])
       setSelectedFile(null)
-      event.currentTarget.reset()
+      form.reset()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload document.')
     } finally {
@@ -182,6 +190,30 @@ function App() {
       setError(err instanceof Error ? err.message : 'Could not share document.')
     } finally {
       setSharingDocumentId(null)
+    }
+  }
+
+  async function handleDelete(documentId: string) {
+    const confirmed = window.confirm(
+      'Delete this document? This removes the uploaded file and any processed data.',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingDocumentId(documentId)
+    setError(null)
+
+    try {
+      await deleteDocument(documentId, auth?.token ?? '')
+      setDocuments((current) => current.filter((document) => document.id !== documentId))
+      setSearchResults((current) => current.filter((result) => result.documentId !== documentId))
+      setChatResponse(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete document.')
+    } finally {
+      setDeletingDocumentId(null)
     }
   }
 
@@ -449,6 +481,18 @@ function App() {
                         {sharingDocumentId === document.id ? 'Sharing...' : 'Share'}
                       </button>
                     </form>
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={() => handleDelete(document.id)}
+                      disabled={
+                        deletingDocumentId === document.id ||
+                        processingDocumentId === document.id ||
+                        sharingDocumentId === document.id
+                      }
+                    >
+                      {deletingDocumentId === document.id ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
                 ) : (
                   <span className="viewer-badge">Shared with you</span>

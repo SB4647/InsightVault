@@ -162,6 +162,59 @@ public class DocumentServiceTests
             service.ShareDocumentAsync(new ShareDocumentCommand(document.Id, "user-2", "viewer@example.com")));
     }
 
+    [Fact]
+    public async Task DeleteDocumentAsync_WhenOwnerDeletesDocument_RemovesBlobAndDocumentMetadata()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var blobStorage = new RecordingBlobStorageService();
+        var document = Document.Create(
+            "owned.pdf",
+            "application/pdf",
+            100,
+            "documents/owned.pdf",
+            new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
+            "owner-1");
+        repository.Documents.Add(document);
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            TimeProvider.System,
+            new StubUserLookupService());
+
+        await service.DeleteDocumentAsync(new DeleteDocumentCommand(document.Id, "owner-1"));
+
+        Assert.Equal("documents/owned.pdf", blobStorage.DeletedBlobName);
+        Assert.Empty(repository.Documents);
+        Assert.Equal(1, repository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task DeleteDocumentAsync_WhenDocumentIsNotOwnedByUser_ThrowsInvalidOperationException()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var blobStorage = new RecordingBlobStorageService();
+        var document = Document.Create(
+            "owned.pdf",
+            "application/pdf",
+            100,
+            "documents/owned.pdf",
+            new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
+            "owner-1");
+        repository.Documents.Add(document);
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            TimeProvider.System,
+            new StubUserLookupService());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.DeleteDocumentAsync(new DeleteDocumentCommand(document.Id, "viewer-1")));
+
+        Assert.Null(blobStorage.DeletedBlobName);
+        Assert.Single(repository.Documents);
+        Assert.Equal(0, repository.SaveChangesCallCount);
+    }
+
     private sealed class InMemoryDocumentRepository : IDocumentRepository
     {
         public List<Document> Documents { get; } = [];
@@ -194,6 +247,11 @@ public class DocumentServiceTests
                     .ToList());
         }
 
+        public void Remove(Document document)
+        {
+            Documents.Remove(document);
+        }
+
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveChangesCallCount++;
@@ -205,6 +263,7 @@ public class DocumentServiceTests
     {
         public string? UploadedBlobName { get; private set; }
         public string? UploadedContentType { get; private set; }
+        public string? DeletedBlobName { get; private set; }
 
         public Task UploadAsync(
             string blobName,
@@ -220,6 +279,12 @@ public class DocumentServiceTests
         public Task<Stream> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<Stream>(new MemoryStream());
+        }
+
+        public Task DeleteAsync(string blobName, CancellationToken cancellationToken = default)
+        {
+            DeletedBlobName = blobName;
+            return Task.CompletedTask;
         }
     }
 

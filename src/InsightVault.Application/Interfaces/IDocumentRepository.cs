@@ -15,5 +15,7 @@ public interface IDocumentRepository
         string ownerUserId,
         CancellationToken cancellationToken = default);
 
+    void Remove(Document document);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -17,4 +17,8 @@ public interface IDocumentService
     Task<DocumentShareDto> ShareDocumentAsync(
         ShareDocumentCommand command,
         CancellationToken cancellationToken = default);
+
+    Task DeleteDocumentAsync(
+        DeleteDocumentCommand command,
+        CancellationToken cancellationToken = default);
 }

@@ -106,5 +106,26 @@ public sealed class DocumentsController(
         }
     }
 
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteDocument(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await documentService.DeleteDocumentAsync(
+                new DeleteDocumentCommand(id, User.GetRequiredUserId()),
+                cancellationToken);
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("was not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
     public sealed record ShareDocumentRequest(string Email);
 }
