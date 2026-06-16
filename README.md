@@ -411,6 +411,98 @@ Do not commit `dev.tfvars` or Terraform state files.
 
 ---
 
+## Upcoming Work
+
+This roadmap focuses on production practices, security, and deployment readiness before adding more product features.
+
+### Stage 1: CI Quality Gates
+
+Goal: prove every change builds, tests, and validates infrastructure before it is merged.
+
+- [ ] Add GitHub Actions workflow for backend build and tests
+- [ ] Add GitHub Actions workflow steps for frontend install, build, and lint
+- [ ] Add Terraform checks: `terraform fmt -check` and `terraform validate`
+- [ ] Run workflows on pull requests and pushes to the main branch
+- [ ] Add status badges to the README after the workflow is stable
+
+Portfolio value:
+
+- Shows professional engineering discipline
+- Makes the repo easier to review
+- Demonstrates .NET, React, and Terraform validation in one pipeline
+
+### Stage 2: Secret And Cost Safety
+
+Goal: make it hard to leak secrets or accidentally create paid infrastructure.
+
+- [ ] Keep `dev.tfvars`, Terraform state, publish profiles, and local environment files ignored
+- [ ] Document secret setup with user secrets locally and Azure app settings or Key Vault in production
+- [ ] Keep `enable_paid_hosting = false` as the default Terraform mode
+- [ ] Keep `prevent_destroy` on imported Azure resources
+- [ ] Document monthly cost expectations before enabling paid hosting
+- [ ] Add a short “rotate leaked secrets” checklist
+
+Portfolio value:
+
+- Shows security awareness
+- Shows cost-aware cloud judgment
+- Explains why production infrastructure is opt-in
+
+### Stage 3: Application Security Hardening
+
+Goal: tighten the current app without changing its architecture.
+
+- [ ] Move CORS allowed origins into configuration instead of hardcoded values
+- [ ] Strengthen upload validation for PDF extension, content type, empty files, and max size
+- [ ] Avoid returning blob names to the frontend unless the UI needs them
+- [ ] Improve frontend handling for expired JWTs and authorization failures
+- [ ] Add tests for upload validation and authorization edge cases
+
+Portfolio value:
+
+- Shows practical API security
+- Improves production readiness
+- Creates good interview talking points around trust boundaries
+
+### Stage 4: Deployment Documentation
+
+Goal: make the production path understandable without requiring it to run all month.
+
+- [ ] Add `docs/deployment.md`
+- [ ] Document local development setup
+- [ ] Document Terraform import-only mode
+- [ ] Document optional paid hosting mode
+- [ ] Document Azure resources required for Blob Storage and Foundry/OpenAI
+- [ ] Document how to run EF migrations against Azure SQL when paid hosting is enabled
+- [ ] Document how to tear down paid resources safely
+
+Portfolio value:
+
+- Shows you can communicate operational steps clearly
+- Makes the repo easier for reviewers to understand
+- Demonstrates production planning without unnecessary spend
+
+### Stage 5: Optional Manual Cloud Deployment
+
+Goal: support a full Azure deployment only when intentionally triggered.
+
+- [ ] Add a `workflow_dispatch` GitHub Actions workflow for manual deployment
+- [ ] Deploy the API to Azure App Service only when `enable_paid_hosting = true`
+- [ ] Build the React app with the deployed API URL
+- [ ] Upload React build artifacts to the configured frontend hosting target
+- [ ] Run EF migrations as an explicit deployment step
+- [ ] Keep automatic deploys disabled until costs and secrets are fully controlled
+
+Portfolio value:
+
+- Shows CI/CD knowledge
+- Avoids surprise Azure costs
+- Demonstrates a real production path that can be turned on when needed
+
+Recommended next step: implement Stage 1 first. CI quality gates provide the highest portfolio value without increasing Azure cost.
+
+---
+
 ## Getting Started
 
 ### Backend
