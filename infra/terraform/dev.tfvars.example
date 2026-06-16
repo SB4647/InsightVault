@@ -1,0 +1,28 @@
+project_name         = "insightvault"
+environment          = "dev"
+location             = "australiaeast"
+resource_group_name  = "InsightVault-RG"
+
+documents_storage_account_name = "insightvaultblobs"
+
+azure_ai_foundry_name     = "insightvault-ai-resource"
+azure_ai_foundry_location = "eastus2"
+azure_ai_foundry_sku_name = "S0"
+
+enable_paid_hosting = false
+
+sql_admin_login      = "insightvaultadmin"
+sql_admin_password   = "replace-with-a-strong-password"
+allowed_ip_address   = ""
+
+jwt_signing_key      = "replace-with-a-long-random-production-signing-key"
+
+azure_openai_endpoint                  = "https://your-resource.openai.azure.com"
+azure_openai_api_key                   = "replace-with-your-api-key"
+azure_openai_embedding_deployment_name = "text-embedding-3-small"
+azure_openai_chat_deployment_name      = "gpt-4.1-mini"
+
+# Add the deployed frontend URL here after the first apply, then apply again.
+# The API code must read Cors:AllowedOrigins from configuration before this
+# setting controls production CORS.
+frontend_allowed_origins = []

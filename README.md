@@ -377,6 +377,40 @@ Current migrations:
 
 ---
 
+## Cloud Infrastructure
+
+Terraform scaffolding lives in `infra/terraform`.
+
+The current scaffold defaults to low-cost mode and manages/imports:
+
+- Azure resource group, matching the existing `InsightVault-RG`
+- Azure Storage for uploaded documents, matching the existing `insightvaultblobs`
+- Azure AI Foundry / AI Services resource, matching the existing `insightvault-ai-resource`
+
+Paid hosting resources are available behind `enable_paid_hosting = true`:
+
+- Azure App Service Plan
+- Azure Linux Web App for the API
+- Azure SQL Server and database
+- Azure Storage static website hosting for the React frontend
+- Log Analytics workspace
+- Application Insights
+
+It includes commented placeholders for later production hardening such as Key Vault, managed identities, private networking, Azure AI Search, Foundry agents, multi-environment modules, and Kubernetes.
+
+Start with:
+
+```bash
+cd infra/terraform
+cp dev.tfvars.example dev.tfvars
+terraform init
+terraform plan -var-file="dev.tfvars"
+```
+
+Do not commit `dev.tfvars` or Terraform state files.
+
+---
+
 ## Getting Started
 
 ### Backend

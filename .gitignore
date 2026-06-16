@@ -391,6 +391,21 @@ FodyWeavers.xsd
 # Local History for Visual Studio Code
 .history/
 
+# Terraform local state and secrets
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+imports.tf
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+!*.tfvars.example
+
 # Windows Installer files from build outputs
 *.cab
 *.msi

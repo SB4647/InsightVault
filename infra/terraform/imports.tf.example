@@ -1,0 +1,24 @@
+# Copy this file to imports.tf only when you are ready to import existing Azure resources.
+# Replace <subscription-id> with your Azure subscription ID, then run:
+#
+# terraform plan -var-file="dev.tfvars"
+# terraform apply -var-file="dev.tfvars"
+#
+# After the import apply succeeds, you can either keep imports.tf committed with
+# real IDs removed, or delete your local imports.tf. Terraform state will remember
+# the imported resources.
+
+import {
+  to = azurerm_resource_group.main
+  id = "/subscriptions/<subscription-id>/resourceGroups/InsightVault-RG"
+}
+
+import {
+  to = azurerm_storage_account.documents
+  id = "/subscriptions/<subscription-id>/resourceGroups/InsightVault-RG/providers/Microsoft.Storage/storageAccounts/insightvaultblobs"
+}
+
+import {
+  to = azurerm_cognitive_account.foundry
+  id = "/subscriptions/<subscription-id>/resourceGroups/InsightVault-RG/providers/Microsoft.CognitiveServices/accounts/insightvault-ai-resource"
+}
