@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=InsightVault;User Id=sa;Password=${INSIGHTVAULT_SQL_PASSWORD:-InsightVault-Local-Only-Password-123!};TrustServerCertificate=True;MultipleActiveResultSets=true
+      Jwt__Issuer: InsightVault
+      Jwt__Audience: InsightVault.Client
+      Jwt__SigningKey: ${INSIGHTVAULT_JWT_SIGNING_KEY:-insightvault-local-docker-signing-key-change-me}
+      Jwt__ExpiresMinutes: 60
+      AzureBlobStorage__ConnectionString: ${AZURE_BLOB_STORAGE_CONNECTION_STRING:-}
+      AzureBlobStorage__ContainerName: ${AZURE_BLOB_STORAGE_CONTAINER_NAME:-documents}
+      AzureOpenAI__Endpoint: ${AZURE_OPENAI_ENDPOINT:-}
+      AzureOpenAI__ApiKey: ${AZURE_OPENAI_API_KEY:-}
+      AzureOpenAI__EmbeddingDeploymentName: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME:-}
+      AzureOpenAI__ChatDeploymentName: ${AZURE_OPENAI_CHAT_DEPLOYMENT_NAME:-}
+      AzureOpenAI__ApiVersion: ${AZURE_OPENAI_API_VERSION:-2024-10-21}
+    ports:
+      - "5089:8080"
+    depends_on:
+      - sqlserver
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${INSIGHTVAULT_SQL_PASSWORD:-InsightVault-Local-Only-Password-123!}
+    ports:
+      - "14333:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+volumes:
+  sqlserver-data:

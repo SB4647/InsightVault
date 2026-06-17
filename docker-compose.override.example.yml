@@ -1,0 +1,11 @@
+# Copy this file to docker-compose.override.yml for local-only Docker settings.
+# Do not commit docker-compose.override.yml if it contains real secrets.
+
+services:
+  api:
+    environment:
+      AzureBlobStorage__ConnectionString: "<your-azure-storage-connection-string>"
+      AzureOpenAI__Endpoint: "https://<your-resource>.openai.azure.com"
+      AzureOpenAI__ApiKey: "<your-azure-openai-api-key>"
+      AzureOpenAI__EmbeddingDeploymentName: "text-embedding-3-small"
+      AzureOpenAI__ChatDeploymentName: "gpt-4.1-mini"

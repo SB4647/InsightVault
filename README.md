@@ -377,6 +377,50 @@ Current migrations:
 
 ---
 
+## Docker
+
+Docker support is intended for local production-shape development. It runs the API in a container and SQL Server in a container without creating paid Azure hosting resources.
+
+Start the containers:
+
+```bash
+docker compose up --build
+```
+
+The API is available at:
+
+```text
+http://localhost:5089
+```
+
+SQL Server is available from the host at:
+
+```text
+localhost,14333
+```
+
+Run EF migrations against the Docker SQL Server database:
+
+```bash
+dotnet ef database update --project src/InsightVault.Infrastructure --startup-project src/InsightVault.Api --connection "Server=localhost,14333;Database=InsightVault;User Id=sa;Password=InsightVault-Local-Only-Password-123!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```
+
+Optional local secrets can be supplied through environment variables or by copying `docker-compose.override.example.yml` to `docker-compose.override.yml` and filling in local values. Do not commit `docker-compose.override.yml`.
+
+Stop the containers:
+
+```bash
+docker compose down
+```
+
+Remove the local SQL Server volume if you want to reset the Docker database:
+
+```bash
+docker compose down --volumes
+```
+
+---
+
 ## Cloud Infrastructure
 
 Terraform scaffolding lives in `infra/terraform`.
@@ -435,6 +479,7 @@ Portfolio value:
 
 Goal: make it hard to leak secrets or accidentally create paid infrastructure.
 
+- [x] Add Docker support for local API and SQL Server without Azure hosting cost
 - [ ] Keep `dev.tfvars`, Terraform state, publish profiles, and local environment files ignored
 - [ ] Document secret setup with user secrets locally and Azure app settings or Key Vault in production
 - [ ] Keep `enable_paid_hosting = false` as the default Terraform mode
