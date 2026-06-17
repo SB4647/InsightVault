@@ -419,10 +419,10 @@ This roadmap focuses on production practices, security, and deployment readiness
 
 Goal: prove every change builds, tests, and validates infrastructure before it is merged.
 
-- [ ] Add GitHub Actions workflow for backend build and tests
-- [ ] Add GitHub Actions workflow steps for frontend install, build, and lint
-- [ ] Add Terraform checks: `terraform fmt -check` and `terraform validate`
-- [ ] Run workflows on pull requests and pushes to the main branch
+- [x] Add GitHub Actions workflow for backend build and tests
+- [x] Add GitHub Actions workflow steps for frontend install, build, and lint
+- [x] Add Terraform checks: `terraform fmt -check` and `terraform validate`
+- [x] Run workflows on pull requests and pushes to the main branch
 - [ ] Add status badges to the README after the workflow is stable
 
 Portfolio value:
