@@ -65,6 +65,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build --file Dockerfile --tag insightvault-api:ci .
+
   terraform:
     name: Terraform
     runs-on: ubuntu-latest
