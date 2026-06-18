@@ -75,6 +75,38 @@ public class DocumentProcessingServiceTests
             service.ProcessAsync(new ProcessDocumentCommand(document.Id, "user-1")));
     }
 
+    [Fact]
+    public async Task ProcessAsync_WhenReprocessingFails_KeepsExistingChunks()
+    {
+        var document = Document.Create(
+            "sample.pdf",
+            "application/pdf",
+            256,
+            "documents/sample.pdf",
+            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
+            "user-1");
+        var existingChunk = DocumentChunk.Create(document.Id, 0, "previous searchable content");
+        existingChunk.SetEmbedding([1.0f, 2.0f, 3.0f]);
+        document.CompleteProcessing([existingChunk]);
+        var repository = new InMemoryDocumentRepository(document);
+        var service = new DocumentProcessingService(
+            repository,
+            new RecordingBlobStorageService(),
+            new StubTextExtractionService("new content that will fail embedding"),
+            new DocumentChunkingService(),
+            new FailingEmbeddingService());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ProcessAsync(new ProcessDocumentCommand(document.Id, "user-1")));
+
+        Assert.Equal(DocumentProcessingStatus.Failed, document.Status);
+        var retainedChunk = Assert.Single(document.Chunks);
+        Assert.Equal(existingChunk.Id, retainedChunk.Id);
+        Assert.Equal("previous searchable content", retainedChunk.Text);
+        Assert.NotNull(retainedChunk.Embedding);
+        Assert.Equal(1, repository.SaveChangesCallCount);
+    }
+
     private sealed class InMemoryDocumentRepository(params Document[] documents) : IDocumentRepository
     {
         private readonly List<Document> _documents = [.. documents];
@@ -159,6 +191,16 @@ public class DocumentProcessingServiceTests
         {
             RequestedTexts.Add(text);
             return Task.FromResult<IReadOnlyList<float>>([1.0f, 2.0f, 3.0f]);
+        }
+    }
+
+    private sealed class FailingEmbeddingService : IEmbeddingService
+    {
+        public Task<IReadOnlyList<float>> GenerateEmbeddingAsync(
+            string text,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("Embedding generation failed.");
         }
     }
 }

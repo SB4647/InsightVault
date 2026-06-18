@@ -90,7 +90,6 @@ public class Document
     public void StartProcessing()
     {
         Status = DocumentProcessingStatus.Processing;
-        _chunks.Clear();
     }
 
     public void CompleteProcessing(IEnumerable<DocumentChunk> chunks)
