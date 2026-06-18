@@ -1,130 +1,209 @@
 # InsightVault
 
-InsightVault is an AI-powered document intelligence platform built with .NET, React, SQL Server, Azure Blob Storage, and Azure OpenAI.
+InsightVault is an AI-powered document intelligence application for uploading PDFs, processing their content, searching semantically, and asking grounded questions over a private document library.
 
-The current implementation covers:
+It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, Azure Blob Storage, Azure OpenAI, Docker, Terraform, and GitHub Actions.
 
-- Phase 1: document upload and document list
-- Phase 2: PDF text extraction, document chunking, embedding generation, and vector persistence
-- Phase 3: semantic search, similarity ranking, and search API
-- Phase 4: RAG chat, grounded answers, and source citations
-- Phase 5A: local user accounts, JWT authentication, and document ownership
-- Phase 5B: shared document permissions for viewer access
+## Highlights
 
-Document versioning, background jobs, Azure AI Search, and agents are not implemented yet.
+- PDF upload, listing, processing, sharing, and deletion
+- Local user accounts with JWT authentication
+- Owner-scoped and viewer-scoped document access
+- PDF text extraction, chunking, embedding generation, and vector persistence
+- Semantic search with cosine similarity ranking
+- RAG chat with grounded answers and source citations
+- Clean Architecture project structure
+- Docker Compose local environment for API and SQL Server
+- Terraform scaffold for low-cost Azure resource management and optional paid hosting
+- GitHub Actions CI for backend, frontend, Docker, and Terraform validation
+- xUnit tests for Domain and Application behavior
 
----
+## Screenshots
 
-## Current Features
+Screenshots are intentionally left as placeholders until the repository is ready to make public. Add images under `docs/screenshots/` using these filenames.
+
+### Document Library
+
+Placeholder: `docs/screenshots/01-document-library-overview.png`
+
+Show the logged-in app with the upload panel, semantic search panel, RAG chat panel, and document list visible.
+
+### Upload And Document Management
+
+Placeholder: `docs/screenshots/02-uploaded-documents.png`
+
+Show uploaded PDFs with status, chunk count, access level, process, share, and delete actions.
+
+### Document Processing
+
+Placeholder: `docs/screenshots/03-processed-document.png`
+
+Show a processed document with `Processed` status and a chunk count greater than zero.
+
+### Semantic Search
+
+Placeholder: `docs/screenshots/04-semantic-search.png`
+
+Show a semantic search query with ranked results and similarity scores.
+
+### RAG Chat With Source Citations
+
+Placeholder: `docs/screenshots/05-rag-chat.png`
+
+Show a grounded answer with source citations from document chunks.
+
+### CI Quality Gates
+
+Placeholder: `docs/screenshots/06-github-actions-ci.png`
+
+Show GitHub Actions with Backend, Frontend, Docker, and Terraform jobs passing.
+
+## What It Does
+
+### Document Management
 
 - Upload PDF documents from the React client
-- Register and log in with local user accounts
-- Protect document, search, and chat APIs with JWT bearer authentication
-- Scope uploaded documents, search results, and chat answers to the current user
-- Share owned documents with other registered users as viewers
-- Include shared viewer documents in document lists, semantic search, and RAG chat
-- Delete owned documents from the UI and API
 - Store uploaded files in Azure Blob Storage
 - Store document metadata in SQL Server
-- List uploaded documents
-- Trigger document processing from the document list
+- List owned and shared documents
+- Delete owned documents from the UI and API
+- Track document processing status: `Uploaded`, `Processing`, `Processed`, `Failed`
+
+### Processing And Search
+
 - Extract text from uploaded PDFs with PdfPig
 - Split extracted text into overlapping chunks
 - Generate embeddings through Azure OpenAI
 - Persist chunks and embedding vectors in SQL Server
 - Search processed document chunks semantically
 - Rank search results by cosine similarity
-- Ask questions against processed documents with RAG chat
-- Generate grounded answers through Azure OpenAI chat completions
-- Return source citations for chat answers
-- Track document processing status: `Uploaded`, `Processing`, `Processed`, `Failed`
-- Clean Architecture project structure
-- xUnit tests for Domain and Application behavior
 
----
+### RAG Chat
+
+- Ask natural-language questions against processed documents
+- Retrieve relevant chunks using semantic search
+- Generate grounded answers through Azure OpenAI chat completions
+- Return source citations for the chunks used in the answer
+
+### Security And Access Control
+
+- Register and log in with local user accounts
+- Protect document, search, and chat APIs with JWT bearer authentication
+- Scope document access to owners and explicitly shared viewers
+- Prevent viewers from processing, sharing, or deleting documents
+- Clear expired frontend sessions when protected APIs return `401 Unauthorized`
+- Enforce server-side PDF upload validation
+- Keep blob names out of public document DTOs
 
 ## Architecture
 
-```text
-React Client
-     |
-     v
-ASP.NET Core API
-     |
-     v
-Application
-     |
-     v
-Domain
+### Local Development Architecture
 
-Infrastructure implements Application interfaces for:
-- SQL Server / EF Core
-- Azure Blob Storage
-- PDF text extraction
-- Azure OpenAI embeddings
+```mermaid
+flowchart LR
+    Browser["Browser"]
+    React["React + Vite\nlocalhost:5173"]
+    Api["ASP.NET Core API\nDocker or Visual Studio"]
+    Sql["SQL Server\nDocker or LocalDB"]
+    Blob["Azure Blob Storage"]
+    OpenAI["Azure OpenAI\nEmbeddings + Chat"]
+
+    Browser --> React
+    React --> Api
+    Api --> Sql
+    Api --> Blob
+    Api --> OpenAI
 ```
 
-### Project Responsibilities
+### Clean Architecture
 
-#### `InsightVault.Api`
+```mermaid
+flowchart TD
+    Api["InsightVault.Api\nControllers, Auth, Composition"]
+    Application["InsightVault.Application\nUse Cases, Interfaces, DTOs"]
+    Domain["InsightVault.Domain\nEntities, Enums, Business Rules"]
+    Infrastructure["InsightVault.Infrastructure\nEF Core, Blob Storage, PdfPig, Azure OpenAI"]
+    Client["InsightVault.Client\nReact + TypeScript"]
 
-- HTTP endpoints
-- Request/response handling
-- JWT authentication and authorization
-- Dependency injection composition
-- CORS and API configuration
+    Client --> Api
+    Api --> Application
+    Application --> Domain
+    Infrastructure --> Application
+    Infrastructure --> Domain
+    Api --> Infrastructure
+```
 
-#### `InsightVault.Application`
+Dependency rules:
 
-- Document upload/list use cases
-- Document processing workflow
-- Semantic search workflow
-- RAG chat workflow
-- Owner-scoped document access contracts
-- Viewer permission checks for shared document access
-- Chunking service
-- DTOs and commands
-- Interfaces for storage, repositories, text extraction, embeddings, and chat completion
+- Domain does not reference Application or Infrastructure.
+- Application does not reference Infrastructure.
+- Infrastructure implements Application interfaces.
+- Controllers stay thin and delegate business workflows to Application services.
 
-#### `InsightVault.Domain`
+### CI Pipeline
 
-- `Document`
-- `DocumentChunk`
-- `Embedding`
-- `DocumentProcessingStatus`
-- Domain validation and processing state transitions
+```mermaid
+flowchart LR
+    Push["Push / Pull Request"]
+    Backend["Backend\nrestore, build, test"]
+    Frontend["Frontend\nnpm ci, build, lint"]
+    Docker["Docker\nbuild API image"]
+    Terraform["Terraform\nfmt, init, validate"]
 
-#### `InsightVault.Infrastructure`
+    Push --> Backend
+    Push --> Frontend
+    Push --> Docker
+    Push --> Terraform
+```
 
-- EF Core `ApplicationDbContext`
-- ASP.NET Core Identity user persistence
-- SQL Server repository implementation
-- Azure Blob Storage implementation
-- PdfPig PDF text extraction
-- Azure OpenAI embedding adapter
-- Azure OpenAI chat completion adapter
-- EF Core migrations
+The CI pipeline is intentionally simple. It validates the application, frontend, Dockerfile, and Terraform configuration. It does not deploy or create paid Azure resources.
 
-#### `InsightVault.Client`
+### Optional Azure Deployment Path
 
-- React + TypeScript frontend built with Vite
-- Upload form
-- Login/register form
-- Uploaded document list
-- Share document form for owned documents
-- Process document action
-- Delete document action for owned documents
-- Semantic search panel
-- RAG chat panel
-- Status and chunk count display
+```mermaid
+flowchart TD
+    User["User"]
+    StaticWeb["Static Website Hosting\noptional"]
+    AppService["Azure App Service\noptional API host"]
+    AzureSql["Azure SQL\noptional paid hosting"]
+    Storage["Azure Storage\nBlob documents"]
+    Foundry["Azure AI Foundry / Azure OpenAI"]
+    Terraform["Terraform\nlow-cost import mode or paid hosting mode"]
 
-#### `InsightVault.Tests`
+    User --> StaticWeb
+    StaticWeb --> AppService
+    AppService --> AzureSql
+    AppService --> Storage
+    AppService --> Foundry
+    Terraform --> AppService
+    Terraform --> AzureSql
+    Terraform --> Storage
+    Terraform --> Foundry
+```
 
-- xUnit tests for Domain and Application logic
+Paid Azure hosting is optional and disabled by default in Terraform.
 
----
+## Project Structure
 
-## API Endpoints
+```text
+src/
+  InsightVault.Api             ASP.NET Core API, auth, controllers, DI
+  InsightVault.Application     Use cases, commands, DTOs, interfaces
+  InsightVault.Domain          Entities, enums, domain rules
+  InsightVault.Infrastructure  EF Core, Blob Storage, PDF extraction, Azure OpenAI
+  InsightVault.Client          React + TypeScript frontend
+
+tests/
+  InsightVault.Tests           xUnit tests for domain and application behavior
+
+infra/
+  terraform                    Azure infrastructure scaffold
+
+.github/
+  workflows                    CI pipeline
+```
+
+## API Overview
 
 Protected document, search, and chat endpoints require:
 
@@ -132,33 +211,11 @@ Protected document, search, and chat endpoints require:
 Authorization: Bearer {token}
 ```
 
-### Register
+### Authentication
 
 ```http
 POST /api/auth/register
-Content-Type: application/json
-```
-
-Request:
-
-```json
-{
-  "email": "user@example.com",
-  "password": "Password123"
-}
-```
-
-Returns:
-
-- `userId`
-- `email`
-- `token`
-
-### Login
-
-```http
 POST /api/auth/login
-Content-Type: application/json
 ```
 
 Request:
@@ -176,24 +233,17 @@ Returns:
 - `email`
 - `token`
 
-### Upload Document
+### Documents
 
 ```http
-POST /api/documents
-Content-Type: multipart/form-data
+GET    /api/documents
+POST   /api/documents
+POST   /api/documents/{id}/process
+POST   /api/documents/{id}/share
+DELETE /api/documents/{id}
 ```
 
-Form field:
-
-- `file`: PDF document
-
-### List Documents
-
-```http
-GET /api/documents
-```
-
-Returns uploaded document metadata:
+Document list responses include:
 
 - `id`
 - `originalFileName`
@@ -205,59 +255,12 @@ Returns uploaded document metadata:
 - `isOwner`
 - `accessLevel`
 
-The list includes documents owned by the current user and documents shared with the current user.
+Upload validation is enforced server-side:
 
-### Process Document
-
-```http
-POST /api/documents/{id}/process
-```
-
-Only the document owner can process a document.
-
-Processing does the Phase 2 workflow:
-
-1. Downloads the uploaded file from Azure Blob Storage.
-2. Extracts PDF text.
-3. Splits text into overlapping chunks.
-4. Generates one embedding per chunk.
-5. Stores chunks and embedding vectors in SQL Server.
-
-### Share Document
-
-```http
-POST /api/documents/{id}/share
-Content-Type: application/json
-```
-
-Only the document owner can share a document.
-
-Request:
-
-```json
-{
-  "email": "viewer@example.com"
-}
-```
-
-Sharing grants viewer access. Viewers can list, search, and chat over shared processed documents, but they cannot process or re-share them.
-
-Returns:
-
-- `documentId`
-- `sharedWithUserId`
-- `sharedWithEmail`
-- `accessLevel`
-
-### Delete Document
-
-```http
-DELETE /api/documents/{id}
-```
-
-Only the document owner can delete a document.
-
-Deleting removes the uploaded blob and the document metadata. Related chunks, embeddings, and permissions are removed through EF Core cascade behavior.
+- only `.pdf` files
+- only `application/pdf` content type
+- non-empty files
+- maximum size of 25 MB
 
 ### Semantic Search
 
@@ -265,14 +268,7 @@ Deleting removes the uploaded blob and the document metadata. Related chunks, em
 GET /api/search?query={query}&maxResults=10
 ```
 
-Search does the Phase 3 workflow:
-
-1. Generates an embedding for the search query.
-2. Loads processed document chunks and stored embeddings.
-3. Calculates cosine similarity.
-4. Returns ranked matching chunks.
-
-Returns:
+Returns ranked chunks:
 
 - `documentId`
 - `documentName`
@@ -292,34 +288,19 @@ Request:
 
 ```json
 {
-  "question": "What does this document say about the roadmap?",
+  "question": "What are the most important points in these documents?",
   "maxSources": 5
 }
 ```
-
-Chat does the Phase 4 workflow:
-
-1. Runs semantic search for the question.
-2. Sends the top matching chunks to Azure OpenAI chat completions.
-3. Returns a grounded answer.
-4. Returns the chunks used as source citations.
 
 Returns:
 
 - `answer`
 - `sources`
-  - `documentId`
-  - `documentName`
-  - `chunkId`
-  - `chunkIndex`
-  - `text`
-  - `score`
-
----
 
 ## Configuration
 
-`src/InsightVault.Api/appsettings.json` contains default development settings:
+`src/InsightVault.Api/appsettings.json` contains safe default development settings. Secrets are intentionally blank.
 
 ```json
 {
@@ -354,7 +335,7 @@ Returns:
 }
 ```
 
-Use user secrets or environment-specific configuration for local secrets:
+Use user secrets or environment variables for local secrets:
 
 ```bash
 dotnet user-secrets set "AzureBlobStorage:ConnectionString" "<blob-storage-connection-string>" --project src/InsightVault.Api
@@ -367,37 +348,11 @@ dotnet user-secrets set "Jwt:SigningKey" "<at-least-32-character-signing-key>" -
 
 For deployed environments, configure CORS with `Cors:AllowedOrigins`. Terraform maps this through `Cors__AllowedOrigins` when optional paid hosting is enabled.
 
-Document upload validation is enforced server-side:
+## Local Setup
 
-- only `.pdf` files
-- only `application/pdf` content type
-- non-empty files
-- maximum size of 25 MB
+### Option 1: Docker API And SQL Server
 
----
-
-## Database
-
-Create or update the local SQL Server database with:
-
-```bash
-dotnet ef database update --project src/InsightVault.Infrastructure --startup-project src/InsightVault.Api
-```
-
-Current migrations:
-
-- `InitialCreate`: creates `Documents`
-- `AddDocumentProcessing`: creates `DocumentChunks` and `Embeddings`
-- `AddIdentityAndDocumentOwnership`: creates ASP.NET Core Identity tables and adds `Documents.OwnerUserId`
-- `AddDocumentPermissions`: creates `DocumentPermissions`
-
----
-
-## Docker
-
-Docker support is intended for local production-shape development. It runs the API in a container and SQL Server in a container without creating paid Azure hosting resources.
-
-Start the containers:
+Docker Compose runs the API and SQL Server locally without creating paid Azure hosting resources.
 
 ```bash
 docker compose up --build
@@ -423,150 +378,34 @@ dotnet ef database update --project src/InsightVault.Infrastructure --startup-pr
 
 Optional local secrets can be supplied through environment variables or by copying `docker-compose.override.example.yml` to `docker-compose.override.yml` and filling in local values. Do not commit `docker-compose.override.yml`.
 
+Start the frontend against the Docker API:
+
+```bash
+cd src/InsightVault.Client
+VITE_API_BASE_URL=http://localhost:5089 npm run dev
+```
+
+On PowerShell:
+
+```powershell
+cd src/InsightVault.Client
+$env:VITE_API_BASE_URL="http://localhost:5089"
+npm run dev
+```
+
 Stop the containers:
 
 ```bash
 docker compose down
 ```
 
-Remove the local SQL Server volume if you want to reset the Docker database:
+Reset the Docker database:
 
 ```bash
 docker compose down --volumes
 ```
 
----
-
-## Cloud Infrastructure
-
-Terraform scaffolding lives in `infra/terraform`.
-
-The current scaffold defaults to low-cost mode and manages/imports:
-
-- Azure resource group, matching the existing `InsightVault-RG`
-- Azure Storage for uploaded documents, matching the existing `insightvaultblobs`
-- Azure AI Foundry / AI Services resource, matching the existing `insightvault-ai-resource`
-
-Paid hosting resources are available behind `enable_paid_hosting = true`:
-
-- Azure App Service Plan
-- Azure Linux Web App for the API
-- Azure SQL Server and database
-- Azure Storage static website hosting for the React frontend
-- Log Analytics workspace
-- Application Insights
-
-It includes commented placeholders for later production hardening such as Key Vault, managed identities, private networking, Azure AI Search, Foundry agents, multi-environment modules, and Kubernetes.
-
-Start with:
-
-```bash
-cd infra/terraform
-cp dev.tfvars.example dev.tfvars
-terraform init
-terraform plan -var-file="dev.tfvars"
-```
-
-Do not commit `dev.tfvars` or Terraform state files.
-
----
-
-## Upcoming Work
-
-This roadmap focuses on production practices, security, and deployment readiness before adding more product features.
-
-### Stage 1: CI Quality Gates
-
-Goal: prove every change builds, tests, and validates infrastructure before it is merged.
-
-- [x] Add GitHub Actions workflow for backend build and tests
-- [x] Add GitHub Actions workflow steps for frontend install, build, and lint
-- [x] Add Terraform checks: `terraform fmt -check` and `terraform validate`
-- [x] Run workflows on pull requests and pushes to the main branch
-- [ ] Add status badges to the README after the workflow is stable
-
-Portfolio value:
-
-- Shows professional engineering discipline
-- Makes the repo easier to review
-- Demonstrates .NET, React, and Terraform validation in one pipeline
-
-### Stage 2: Secret And Cost Safety
-
-Goal: make it hard to leak secrets or accidentally create paid infrastructure.
-
-- [x] Add Docker support for local API and SQL Server without Azure hosting cost
-- [ ] Keep `dev.tfvars`, Terraform state, publish profiles, and local environment files ignored
-- [ ] Document secret setup with user secrets locally and Azure app settings or Key Vault in production
-- [ ] Keep `enable_paid_hosting = false` as the default Terraform mode
-- [ ] Keep `prevent_destroy` on imported Azure resources
-- [ ] Document monthly cost expectations before enabling paid hosting
-- [ ] Add a short "rotate leaked secrets" checklist
-
-Portfolio value:
-
-- Shows security awareness
-- Shows cost-aware cloud judgment
-- Explains why production infrastructure is opt-in
-
-### Stage 3: Application Security Hardening
-
-Goal: tighten the current app without changing its architecture.
-
-- [x] Move CORS allowed origins into configuration instead of hardcoded values
-- [x] Strengthen upload validation for PDF extension, content type, empty files, and max size
-- [x] Avoid returning blob names to the frontend unless the UI needs them
-- [x] Improve frontend handling for expired JWTs and authorization failures
-- [ ] Add tests for upload validation and authorization edge cases
-
-Portfolio value:
-
-- Shows practical API security
-- Improves production readiness
-- Creates good interview talking points around trust boundaries
-
-### Stage 4: Deployment Documentation
-
-Goal: make the production path understandable without requiring it to run all month.
-
-- [ ] Add `docs/deployment.md`
-- [ ] Document local development setup
-- [ ] Document Terraform import-only mode
-- [ ] Document optional paid hosting mode
-- [ ] Document Azure resources required for Blob Storage and Foundry/OpenAI
-- [ ] Document how to run EF migrations against Azure SQL when paid hosting is enabled
-- [ ] Document how to tear down paid resources safely
-
-Portfolio value:
-
-- Shows you can communicate operational steps clearly
-- Makes the repo easier for reviewers to understand
-- Demonstrates production planning without unnecessary spend
-
-### Stage 5: Optional Manual Cloud Deployment
-
-Goal: support a full Azure deployment only when intentionally triggered.
-
-- [ ] Add a `workflow_dispatch` GitHub Actions workflow for manual deployment
-- [ ] Deploy the API to Azure App Service only when `enable_paid_hosting = true`
-- [ ] Build the React app with the deployed API URL
-- [ ] Upload React build artifacts to the configured frontend hosting target
-- [ ] Run EF migrations as an explicit deployment step
-- [ ] Keep automatic deploys disabled until costs and secrets are fully controlled
-
-Portfolio value:
-
-- Shows CI/CD knowledge
-- Avoids surprise Azure costs
-- Demonstrates a real production path that can be turned on when needed
-
-Recommended next step: continue Stage 3 by removing blob names from frontend DTOs and improving expired-session handling.
-
----
-
-## Getting Started
-
-### Backend
+### Option 2: Visual Studio / LocalDB
 
 ```bash
 dotnet restore
@@ -574,9 +413,7 @@ dotnet ef database update --project src/InsightVault.Infrastructure --startup-pr
 dotnet run --project src/InsightVault.Api
 ```
 
-The API runs on the ports configured in `src/InsightVault.Api/Properties/launchSettings.json`.
-
-### Frontend
+Start the frontend:
 
 ```bash
 cd src/InsightVault.Client
@@ -584,7 +421,7 @@ npm install
 npm run dev
 ```
 
-The client expects the API at:
+The frontend defaults to:
 
 ```text
 https://localhost:7227
@@ -596,90 +433,121 @@ Override it with:
 VITE_API_BASE_URL=https://localhost:7227 npm run dev
 ```
 
----
+## Database
 
-## Verification
+Current EF Core migrations:
 
-Backend build:
+- `InitialCreate`: creates `Documents`
+- `AddDocumentProcessing`: creates `DocumentChunks` and `Embeddings`
+- `AddIdentityAndDocumentOwnership`: creates ASP.NET Core Identity tables and adds `Documents.OwnerUserId`
+- `AddDocumentPermissions`: creates `DocumentPermissions`
+
+## Cloud Infrastructure
+
+Terraform lives in `infra/terraform`.
+
+The current scaffold defaults to low-cost mode and manages/imports:
+
+- Azure resource group
+- Azure Storage for uploaded documents
+- Azure AI Foundry / AI Services resource
+
+Paid hosting resources are available only when `enable_paid_hosting = true`:
+
+- Azure App Service Plan
+- Azure Linux Web App for the API
+- Azure SQL Server and database
+- Azure Storage static website hosting for the React frontend
+- Log Analytics workspace
+- Application Insights
+
+The scaffold includes comments for future production hardening such as Key Vault, managed identities, private networking, Azure AI Search, Foundry agents, multi-environment modules, and Kubernetes.
+
+Start with:
 
 ```bash
-dotnet build InsightVault.slnx
+cd infra/terraform
+cp dev.tfvars.example dev.tfvars
+terraform init
+terraform plan -var-file="dev.tfvars"
 ```
 
-Backend tests:
+Do not commit `dev.tfvars`, `imports.tf`, or Terraform state files.
 
-```bash
-dotnet test InsightVault.slnx
-```
+## Engineering Practices
 
-Frontend build:
+### CI Quality Gates
 
-```bash
-cd src/InsightVault.Client
-npm run build
-```
+GitHub Actions validates:
 
-The frontend `dist` folder is generated build output and is intentionally not committed.
+- Backend restore, build, and tests
+- Frontend install, build, and lint
+- Docker API image build
+- Terraform formatting and validation
 
-Frontend lint:
+### Testing
 
-```bash
-cd src/InsightVault.Client
-npm run lint
-```
+The test suite focuses on Domain and Application behavior:
 
----
+- document validation
+- document upload/list/share/delete workflows
+- document chunking
+- document processing
+- semantic search ranking
+- RAG chat orchestration
+- failed reprocessing keeps existing chunks
 
-## Development Roadmap
+### Security And Reliability Hardening
 
-### Phase 1: Foundation
+Implemented:
 
-- [x] Create database schema
-- [x] Implement document upload API
-- [x] Save files to Azure Blob Storage
-- [x] Store metadata in SQL Server
-- [x] Display uploaded documents
-- [x] Delete owned documents
+- JWT-protected document, search, and chat APIs
+- owner/viewer document access rules
+- CORS origins loaded from configuration
+- server-side PDF upload validation
+- expired-session handling in the frontend
+- blob names removed from public document DTOs
+- failed document reprocessing preserves previous chunks
+- generated frontend `dist` output is not committed
 
-### Phase 2: Document Processing
+## AI Engineering Notes
 
-- [x] Extract text from uploaded PDFs
-- [x] Implement document chunking
-- [x] Generate embeddings
-- [x] Store vectors
+InsightVault uses a direct RAG workflow:
 
-### Phase 3: Semantic Search
+1. Extract text from uploaded PDFs.
+2. Split text into chunks.
+3. Generate embeddings for each chunk.
+4. Store vectors in SQL Server.
+5. Embed the user query.
+6. Rank chunks by cosine similarity.
+7. Send the top chunks to Azure OpenAI chat completions.
+8. Return a grounded answer with source citations.
 
-- [x] Semantic search
-- [x] Similarity ranking
-- [x] Search API
+Agents are intentionally not implemented yet. The current workflow is deterministic and does not need autonomous tool use or multi-step planning. Agentic workflows would be a future extension if the app needed actions such as document comparison, scheduled review, user-driven tool execution, or multi-document research tasks.
 
-### Phase 4: RAG Chat
+## Future Improvements
 
-- [x] RAG implementation
-- [x] Chat interface
-- [x] Source citations
-
-### Phase 5: Advanced Features
-
-- [x] Authentication
-- [x] User accounts
-- [x] Document ownership
-- [x] Shared document permissions
-- [ ] Document versioning
-
----
+- Add real screenshots and GitHub Actions badge before making the repo public
+- Add `docs/deployment.md` for local, Docker, Terraform import, and optional paid hosting workflows
+- Add a short secret rotation and cost-safety checklist
+- Improve delete consistency between database rows and blob deletion
+- Add status badges after CI is stable
+- Add optional Azure Key Vault and managed identity support for a real cloud deployment
+- Add Azure AI Search only if SQL vector storage becomes insufficient
+- Add agents only when autonomous workflows provide clear product value
 
 ## Purpose
 
-InsightVault is a learning and portfolio project designed to demonstrate:
+InsightVault is designed to demonstrate practical full-stack engineering:
 
 - Clean Architecture with ASP.NET Core
-- Practical document ingestion and processing workflows
+- real document ingestion and processing workflows
 - SQL Server and Azure Blob Storage integration
-- Azure OpenAI embedding integration
-- Azure OpenAI chat completion integration
+- Azure OpenAI embeddings and chat completions
+- RAG with source citations
 - ASP.NET Core Identity and JWT authentication
-- Viewer-only document sharing
+- secure owner/viewer document access
 - React + TypeScript frontend development
-- Future document versioning capabilities
+- Docker-based local development
+- Terraform-based Azure infrastructure planning
+- CI quality gates with GitHub Actions
