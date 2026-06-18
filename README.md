@@ -619,6 +619,8 @@ cd src/InsightVault.Client
 npm run build
 ```
 
+The frontend `dist` folder is generated build output and is intentionally not committed.
+
 Frontend lint:
 
 ```bash
