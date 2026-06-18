@@ -8,6 +8,15 @@ namespace InsightVault.Tests.Application;
 public class DocumentServiceTests
 {
     [Fact]
+    public void DocumentDto_DoesNotExposeBlobName()
+    {
+        var property = typeof(InsightVault.Application.Features.Documents.DTOs.DocumentDto)
+            .GetProperty("BlobName");
+
+        Assert.Null(property);
+    }
+
+    [Fact]
     public async Task UploadAsync_StoresBlobAndSavesDocumentMetadata()
     {
         var repository = new InMemoryDocumentRepository();
@@ -24,8 +33,9 @@ public class DocumentServiceTests
         Assert.Equal(3, result.SizeInBytes);
         Assert.Equal(0, result.ChunkCount);
         Assert.Equal(new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc), result.UploadedAtUtc);
-        Assert.EndsWith(".pdf", result.BlobName);
-        Assert.Equal(result.BlobName, blobStorage.UploadedBlobName);
+        Assert.NotNull(blobStorage.UploadedBlobName);
+        Assert.StartsWith("documents/", blobStorage.UploadedBlobName);
+        Assert.EndsWith(".pdf", blobStorage.UploadedBlobName);
         Assert.Equal("application/pdf", blobStorage.UploadedContentType);
         Assert.Single(repository.Documents);
         Assert.Equal(1, repository.SaveChangesCallCount);

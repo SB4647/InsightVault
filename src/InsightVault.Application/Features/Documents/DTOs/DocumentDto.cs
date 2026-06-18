@@ -5,7 +5,6 @@ public sealed record DocumentDto(
     string OriginalFileName,
     string ContentType,
     long SizeInBytes,
-    string BlobName,
     DateTime UploadedAtUtc,
     string Status,
     int ChunkCount,

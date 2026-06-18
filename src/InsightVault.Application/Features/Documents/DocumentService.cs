@@ -142,7 +142,6 @@ public sealed class DocumentService(
             document.OriginalFileName,
             document.ContentType,
             document.SizeInBytes,
-            document.BlobName,
             document.UploadedAtUtc,
             document.Status.ToString(),
             document.Chunks.Count,

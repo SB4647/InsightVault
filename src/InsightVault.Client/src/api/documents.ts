@@ -3,7 +3,6 @@ export interface DocumentDto {
   originalFileName: string
   contentType: string
   sizeInBytes: number
-  blobName: string
   uploadedAtUtc: string
   status: string
   chunkCount: number

@@ -199,7 +199,6 @@ Returns uploaded document metadata:
 - `originalFileName`
 - `contentType`
 - `sizeInBytes`
-- `blobName`
 - `uploadedAtUtc`
 - `status`
 - `chunkCount`
@@ -516,7 +515,7 @@ Goal: tighten the current app without changing its architecture.
 
 - [x] Move CORS allowed origins into configuration instead of hardcoded values
 - [x] Strengthen upload validation for PDF extension, content type, empty files, and max size
-- [ ] Avoid returning blob names to the frontend unless the UI needs them
+- [x] Avoid returning blob names to the frontend unless the UI needs them
 - [ ] Improve frontend handling for expired JWTs and authorization failures
 - [ ] Add tests for upload validation and authorization edge cases
 
