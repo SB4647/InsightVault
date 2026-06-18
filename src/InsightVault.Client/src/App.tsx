@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 import {
@@ -15,6 +15,7 @@ import { askQuestion } from './api/chat'
 import type { ChatResponseDto } from './api/chat'
 import { login, register } from './api/auth'
 import type { AuthResponse } from './api/auth'
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from './api/errors'
 
 const AUTH_STORAGE_KEY = 'insightvault.auth'
 
@@ -40,6 +41,27 @@ function App() {
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const clearAuthState = useCallback(() => {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuth(null)
+    setDocuments([])
+    setSearchResults([])
+    setChatResponse(null)
+  }, [])
+
+  const handleRequestError = useCallback(
+    (err: unknown, fallbackMessage: string) => {
+      if (isSessionExpiredError(err)) {
+        clearAuthState()
+        setError(SESSION_EXPIRED_MESSAGE)
+        return
+      }
+
+      setError(err instanceof Error ? err.message : fallbackMessage)
+    },
+    [clearAuthState],
+  )
+
   useEffect(() => {
     if (!auth) {
       return
@@ -59,7 +81,7 @@ function App() {
         }
       } catch (err) {
         if (isActive) {
-          setError(err instanceof Error ? err.message : 'Could not load documents.')
+          handleRequestError(err, 'Could not load documents.')
         }
       } finally {
         if (isActive) {
@@ -73,7 +95,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [auth])
+  }, [auth, handleRequestError])
 
   async function loadDocuments(token = auth?.token) {
     if (!token) {
@@ -86,7 +108,7 @@ function App() {
     try {
       setDocuments(await getDocuments(token))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load documents.')
+      handleRequestError(err, 'Could not load documents.')
     } finally {
       setIsLoading(false)
     }
@@ -120,11 +142,7 @@ function App() {
   }
 
   function handleLogout() {
-    localStorage.removeItem(AUTH_STORAGE_KEY)
-    setAuth(null)
-    setDocuments([])
-    setSearchResults([])
-    setChatResponse(null)
+    clearAuthState()
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -145,7 +163,7 @@ function App() {
       setSelectedFile(null)
       form.reset()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not upload document.')
+      handleRequestError(err, 'Could not upload document.')
     } finally {
       setIsUploading(false)
     }
@@ -165,7 +183,7 @@ function App() {
         ),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not process document.')
+      handleRequestError(err, 'Could not process document.')
     } finally {
       setProcessingDocumentId(null)
     }
@@ -187,7 +205,7 @@ function App() {
       await shareDocument(documentId, email, auth?.token ?? '')
       setShareEmails((current) => ({ ...current, [documentId]: '' }))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not share document.')
+      handleRequestError(err, 'Could not share document.')
     } finally {
       setSharingDocumentId(null)
     }
@@ -211,7 +229,7 @@ function App() {
       setSearchResults((current) => current.filter((result) => result.documentId !== documentId))
       setChatResponse(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete document.')
+      handleRequestError(err, 'Could not delete document.')
     } finally {
       setDeletingDocumentId(null)
     }
@@ -231,7 +249,7 @@ function App() {
     try {
       setSearchResults(await searchDocuments(searchQuery.trim(), auth?.token ?? ''))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not search documents.')
+      handleRequestError(err, 'Could not search documents.')
     } finally {
       setIsSearching(false)
     }
@@ -251,7 +269,7 @@ function App() {
     try {
       setChatResponse(await askQuestion(chatQuestion.trim(), auth?.token ?? ''))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not answer question.')
+      handleRequestError(err, 'Could not answer question.')
     } finally {
       setIsAsking(false)
     }

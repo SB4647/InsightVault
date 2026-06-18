@@ -1,3 +1,5 @@
+import { throwApiError } from './errors'
+
 export interface SourceCitationDto {
   documentId: string
   documentName: string
@@ -25,8 +27,7 @@ export async function askQuestion(question: string, token: string): Promise<Chat
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Could not answer question.')
+    await throwApiError(response, 'Could not answer question.')
   }
 
   return response.json()

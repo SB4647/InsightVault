@@ -1,3 +1,5 @@
+import { throwApiError } from './errors'
+
 export interface DocumentDto {
   id: string
   originalFileName: string
@@ -18,12 +20,7 @@ export async function getDocuments(token: string): Promise<DocumentDto[]> {
   })
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Your session has expired. Please log in again.')
-    }
-
-    const message = await response.text()
-    throw new Error(message || 'Could not load documents.')
+    await throwApiError(response, 'Could not load documents.')
   }
 
   return response.json()
@@ -40,8 +37,7 @@ export async function uploadDocument(file: File, token: string): Promise<Documen
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Could not upload document.')
+    await throwApiError(response, 'Could not upload document.')
   }
 
   return response.json()
@@ -70,8 +66,7 @@ export async function processDocument(
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Could not process document.')
+    await throwApiError(response, 'Could not process document.')
   }
 
   return response.json()
@@ -92,8 +87,7 @@ export async function shareDocument(
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Could not share document.')
+    await throwApiError(response, 'Could not share document.')
   }
 
   return response.json()
@@ -106,8 +100,7 @@ export async function deleteDocument(documentId: string, token: string): Promise
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Could not delete document.')
+    await throwApiError(response, 'Could not delete document.')
   }
 }
 

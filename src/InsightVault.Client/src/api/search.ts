@@ -1,3 +1,5 @@
+import { throwApiError } from './errors'
+
 export interface SearchResultDto {
   documentId: string
   documentName: string
@@ -18,8 +20,7 @@ export async function searchDocuments(query: string, token: string): Promise<Sea
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Could not search documents.')
+    await throwApiError(response, 'Could not search documents.')
   }
 
   return response.json()
