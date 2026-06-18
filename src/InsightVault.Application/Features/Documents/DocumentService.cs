@@ -11,16 +11,15 @@ public sealed class DocumentService(
     TimeProvider timeProvider,
     IUserLookupService userLookupService) : IDocumentService
 {
+    public const long MaxUploadSizeInBytes = 25_000_000;
+
     public async Task<DocumentDto> UploadAsync(
         UploadDocumentCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (command.Content.Length <= 0)
-        {
-            throw new ArgumentException("File cannot be empty.", nameof(command));
-        }
-
         var safeFileName = Path.GetFileName(command.FileName);
+        ValidateUpload(command, safeFileName);
+
         var extension = Path.GetExtension(safeFileName);
         var blobName = $"documents/{Guid.NewGuid():N}{extension}";
 
@@ -47,6 +46,34 @@ public sealed class DocumentService(
         await documentRepository.SaveChangesAsync(cancellationToken);
 
         return MapToDto(document, command.OwnerUserId);
+    }
+
+    private static void ValidateUpload(UploadDocumentCommand command, string safeFileName)
+    {
+        if (string.IsNullOrWhiteSpace(safeFileName))
+        {
+            throw new ArgumentException("File name is required.", nameof(command));
+        }
+
+        if (command.SizeInBytes <= 0)
+        {
+            throw new ArgumentException("File cannot be empty.", nameof(command));
+        }
+
+        if (command.SizeInBytes > MaxUploadSizeInBytes)
+        {
+            throw new ArgumentException("File cannot be larger than 25 MB.", nameof(command));
+        }
+
+        if (!string.Equals(Path.GetExtension(safeFileName), ".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only PDF files can be uploaded.", nameof(command));
+        }
+
+        if (!string.Equals(command.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only application/pdf files can be uploaded.", nameof(command));
+        }
     }
 
     public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(

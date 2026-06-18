@@ -29,27 +29,40 @@ public sealed class DocumentsController(
     }
 
     [HttpPost]
-    [RequestSizeLimit(25_000_000)]
+    [RequestSizeLimit(DocumentService.MaxUploadSizeInBytes)]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<DocumentDto>> UploadDocument(
-        IFormFile file,
+        IFormFile? file,
         CancellationToken cancellationToken)
     {
+        if (file is null)
+        {
+            return BadRequest("A file is required.");
+        }
+
         if (file.Length <= 0)
         {
             return BadRequest("A non-empty file is required.");
         }
 
-        await using var stream = file.OpenReadStream();
-        var document = await documentService.UploadAsync(
-            new UploadDocumentCommand(
-                file.FileName,
-                file.ContentType,
-                file.Length,
-                stream,
-                User.GetRequiredUserId()),
-            cancellationToken);
+        DocumentDto document;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            document = await documentService.UploadAsync(
+                new UploadDocumentCommand(
+                    file.FileName,
+                    file.ContentType,
+                    file.Length,
+                    stream,
+                    User.GetRequiredUserId()),
+                cancellationToken);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
 
         return CreatedAtAction(
             nameof(GetDocuments),

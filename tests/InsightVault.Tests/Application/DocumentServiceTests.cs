@@ -32,6 +32,35 @@ public class DocumentServiceTests
         Assert.Equal("user-1", repository.Documents.Single().OwnerUserId);
     }
 
+    [Theory]
+    [InlineData("Report.txt", "application/pdf", 3, "Only PDF files can be uploaded.")]
+    [InlineData("Report.pdf", "text/plain", 3, "Only application/pdf files can be uploaded.")]
+    [InlineData("Report.pdf", "application/pdf", 0, "File cannot be empty.")]
+    [InlineData("Report.pdf", "application/pdf", 25_000_001, "File cannot be larger than 25 MB.")]
+    public async Task UploadAsync_WithInvalidFile_ThrowsArgumentException(
+        string fileName,
+        string contentType,
+        long sizeInBytes,
+        string expectedMessage)
+    {
+        var repository = new InMemoryDocumentRepository();
+        var blobStorage = new RecordingBlobStorageService();
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            TimeProvider.System,
+            new StubUserLookupService());
+        await using var content = new MemoryStream([1, 2, 3]);
+        var command = new UploadDocumentCommand(fileName, contentType, sizeInBytes, content, "user-1");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() => service.UploadAsync(command));
+
+        Assert.Contains(expectedMessage, exception.Message);
+        Assert.Null(blobStorage.UploadedBlobName);
+        Assert.Empty(repository.Documents);
+        Assert.Equal(0, repository.SaveChangesCallCount);
+    }
+
     [Fact]
     public async Task GetDocumentsAsync_ReturnsDocumentsNewestFirst()
     {

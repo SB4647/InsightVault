@@ -341,8 +341,16 @@ Returns:
   "Jwt": {
     "Issuer": "InsightVault",
     "Audience": "InsightVault.Client",
-    "SigningKey": "development-only-signing-key-change-with-user-secrets",
+    "SigningKey": "",
     "ExpiresMinutes": 60
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "https://localhost:5173",
+      "http://localhost:56772",
+      "https://localhost:56772"
+    ]
   }
 }
 ```
@@ -357,6 +365,15 @@ dotnet user-secrets set "AzureOpenAI:EmbeddingDeploymentName" "<embedding-deploy
 dotnet user-secrets set "AzureOpenAI:ChatDeploymentName" "<chat-deployment-name>" --project src/InsightVault.Api
 dotnet user-secrets set "Jwt:SigningKey" "<at-least-32-character-signing-key>" --project src/InsightVault.Api
 ```
+
+For deployed environments, configure CORS with `Cors:AllowedOrigins`. Terraform maps this through `Cors__AllowedOrigins` when optional paid hosting is enabled.
+
+Document upload validation is enforced server-side:
+
+- only `.pdf` files
+- only `application/pdf` content type
+- non-empty files
+- maximum size of 25 MB
 
 ---
 
@@ -485,7 +502,7 @@ Goal: make it hard to leak secrets or accidentally create paid infrastructure.
 - [ ] Keep `enable_paid_hosting = false` as the default Terraform mode
 - [ ] Keep `prevent_destroy` on imported Azure resources
 - [ ] Document monthly cost expectations before enabling paid hosting
-- [ ] Add a short “rotate leaked secrets” checklist
+- [ ] Add a short "rotate leaked secrets" checklist
 
 Portfolio value:
 
@@ -497,8 +514,8 @@ Portfolio value:
 
 Goal: tighten the current app without changing its architecture.
 
-- [ ] Move CORS allowed origins into configuration instead of hardcoded values
-- [ ] Strengthen upload validation for PDF extension, content type, empty files, and max size
+- [x] Move CORS allowed origins into configuration instead of hardcoded values
+- [x] Strengthen upload validation for PDF extension, content type, empty files, and max size
 - [ ] Avoid returning blob names to the frontend unless the UI needs them
 - [ ] Improve frontend handling for expired JWTs and authorization failures
 - [ ] Add tests for upload validation and authorization edge cases
@@ -544,7 +561,7 @@ Portfolio value:
 - Avoids surprise Azure costs
 - Demonstrates a real production path that can be turned on when needed
 
-Recommended next step: implement Stage 1 first. CI quality gates provide the highest portfolio value without increasing Azure cost.
+Recommended next step: continue Stage 3 by removing blob names from frontend DTOs and improving expired-session handling.
 
 ---
 

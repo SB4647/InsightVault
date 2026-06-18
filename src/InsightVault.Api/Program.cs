@@ -45,11 +45,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ClientApp", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "http://localhost:56772",
-                "https://localhost:56772")
+            .WithOrigins(GetAllowedCorsOrigins(builder.Configuration))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -73,3 +69,22 @@ app.MapControllers();
 
 app.Run();
 
+static string[] GetAllowedCorsOrigins(IConfiguration configuration)
+{
+    var configuredOrigins = configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+
+    if (configuredOrigins.Length == 0)
+    {
+        configuredOrigins = (configuration["Cors:AllowedOrigins"] ?? string.Empty)
+            .Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    if (configuredOrigins.Length == 0)
+    {
+        throw new InvalidOperationException("Cors:AllowedOrigins must contain at least one origin.");
+    }
+
+    return configuredOrigins;
+}
