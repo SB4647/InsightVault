@@ -63,8 +63,8 @@ public sealed class DocumentRepositoryTests
 
             Assert.NotNull(document);
 
-            var permission = document.ShareWithViewer("viewer-1");
-            repository.AddPermission(permission);
+            var shareResult = document.ShareWithViewer("viewer-1");
+            repository.AddPermission(shareResult.Permission);
             await repository.SaveChangesAsync();
         }
 

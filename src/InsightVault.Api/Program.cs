@@ -1,17 +1,18 @@
-using System.Text;
 using InsightVault.Api.Auth;
+using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Processing;
-using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Search;
 using InsightVault.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddHealthChecks();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
@@ -58,13 +59,17 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (builder.Configuration.GetValue("HttpsRedirection:Enabled", true))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("ClientApp");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

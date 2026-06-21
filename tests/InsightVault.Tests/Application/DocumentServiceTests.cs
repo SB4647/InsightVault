@@ -176,6 +176,38 @@ public class DocumentServiceTests
         Assert.Equal("viewer@example.com", result.SharedWithEmail);
         Assert.Equal("Viewer", result.AccessLevel);
         Assert.Contains(document.Permissions, permission => permission.UserId == "viewer-1");
+        Assert.Equal(1, repository.AddPermissionCallCount);
+        Assert.Equal(1, repository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ShareDocumentAsync_WhenUserAlreadyHasAccess_DoesNotAddDuplicatePermission()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var document = Document.Create(
+            "owned.pdf",
+            "application/pdf",
+            100,
+            "documents/owned.pdf",
+            new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
+            "owner-1");
+        document.ShareWithViewer("viewer-1");
+        repository.Documents.Add(document);
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService(("viewer@example.com", "viewer-1")));
+
+        var result = await service.ShareDocumentAsync(
+            new ShareDocumentCommand(document.Id, "owner-1", "viewer@example.com"));
+
+        Assert.Equal(document.Id, result.DocumentId);
+        Assert.Equal("viewer-1", result.SharedWithUserId);
+        Assert.Equal("viewer@example.com", result.SharedWithEmail);
+        Assert.Equal("Viewer", result.AccessLevel);
+        Assert.Single(document.Permissions);
+        Assert.Equal(0, repository.AddPermissionCallCount);
         Assert.Equal(1, repository.SaveChangesCallCount);
     }
 
@@ -257,6 +289,7 @@ public class DocumentServiceTests
     private sealed class InMemoryDocumentRepository : IDocumentRepository
     {
         public List<Document> Documents { get; } = [];
+        public int AddPermissionCallCount { get; private set; }
         public int SaveChangesCallCount { get; private set; }
 
         public Task AddAsync(Document document, CancellationToken cancellationToken = default)
@@ -302,6 +335,7 @@ public class DocumentServiceTests
 
         public void AddPermission(DocumentPermission permission)
         {
+            AddPermissionCallCount++;
         }
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)

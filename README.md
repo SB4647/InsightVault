@@ -1,5 +1,7 @@
 # InsightVault
 
+[![CI](https://github.com/SB4647/InsightVault/actions/workflows/ci.yml/badge.svg)](https://github.com/SB4647/InsightVault/actions/workflows/ci.yml)
+
 InsightVault is an AI-powered document intelligence application for uploading PDFs, processing their content, searching semantically, and asking grounded questions over a private document library.
 
 It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, Azure Blob Storage, Azure OpenAI, Docker, Terraform, and GitHub Actions.
@@ -352,6 +354,12 @@ The API is available at:
 http://localhost:5089
 ```
 
+The API health check is available at:
+
+```text
+http://localhost:5089/health
+```
+
 SQL Server is available from the host at:
 
 ```text
@@ -380,6 +388,20 @@ cd src/InsightVault.Client
 $env:VITE_API_BASE_URL="http://localhost:5089"
 npm run dev
 ```
+
+To run the API, SQL Server, and React client through Docker Compose:
+
+```bash
+docker compose --profile frontend up --build
+```
+
+The Dockerized client is available at:
+
+```text
+http://localhost:56772
+```
+
+This full Docker mode is optional. Running the client locally with Vite is still faster for day-to-day frontend work.
 
 Stop the containers:
 
@@ -462,6 +484,8 @@ terraform plan -var-file="dev.tfvars"
 
 Do not commit `dev.tfvars`, `imports.tf`, or Terraform state files.
 
+See [docs/deployment.md](docs/deployment.md) for local, Docker, Terraform import, and optional paid hosting notes.
+
 ## Engineering Practices
 
 ### CI Quality Gates
@@ -493,6 +517,7 @@ Implemented:
 - owner/viewer document access rules
 - CORS origins loaded from configuration
 - server-side PDF upload validation
+- basic API health endpoint
 - expired-session handling in the frontend
 - blob names removed from public document DTOs
 - failed document reprocessing preserves previous chunks
@@ -515,11 +540,8 @@ Agents are intentionally not implemented yet. The current workflow is determinis
 
 ## Future Improvements
 
-- Add real screenshots and GitHub Actions badge before making the repo public
-- Add `docs/deployment.md` for local, Docker, Terraform import, and optional paid hosting workflows
 - Add a short secret rotation and cost-safety checklist
 - Improve delete consistency between database rows and blob deletion
-- Add status badges after CI is stable
 - Add optional Azure Key Vault and managed identity support for a real cloud deployment
 - Add Azure AI Search only if SQL vector storage becomes insufficient
 - Add agents only when autonomous workflows provide clear product value

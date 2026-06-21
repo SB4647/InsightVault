@@ -108,15 +108,19 @@ public sealed class DocumentService(
                 cancellationToken)
             ?? throw new InvalidOperationException($"User '{command.SharedWithEmail}' was not found.");
 
-        var permission = document.ShareWithViewer(sharedWithUser.UserId);
-        documentRepository.AddPermission(permission);
+        var shareResult = document.ShareWithViewer(sharedWithUser.UserId);
+        if (shareResult.Created)
+        {
+            documentRepository.AddPermission(shareResult.Permission);
+        }
+
         await documentRepository.SaveChangesAsync(cancellationToken);
 
         return new DocumentShareDto(
             document.Id,
             sharedWithUser.UserId,
             sharedWithUser.Email,
-            permission.Level.ToString());
+            shareResult.Permission.Level.ToString());
     }
 
     public async Task DeleteDocumentAsync(

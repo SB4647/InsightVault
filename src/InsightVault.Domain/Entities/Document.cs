@@ -111,7 +111,7 @@ public class Document
         Status = DocumentProcessingStatus.Failed;
     }
 
-    public DocumentPermission ShareWithViewer(string userId)
+    public DocumentShareResult ShareWithViewer(string userId)
     {
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -127,12 +127,12 @@ public class Document
         var existingPermission = _permissions.SingleOrDefault(permission => permission.UserId == normalizedUserId);
         if (existingPermission is not null)
         {
-            return existingPermission;
+            return new DocumentShareResult(existingPermission, false);
         }
 
         var permission = DocumentPermission.CreateViewer(Id, normalizedUserId);
         _permissions.Add(permission);
 
-        return permission;
+        return new DocumentShareResult(permission, true);
     }
 }
