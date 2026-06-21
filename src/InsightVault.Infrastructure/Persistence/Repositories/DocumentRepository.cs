@@ -46,6 +46,42 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         return dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ReplaceChunksAsync(
+        Document document,
+        IReadOnlyList<DocumentChunk> chunks,
+        CancellationToken cancellationToken = default)
+    {
+        if (chunks.Count == 0)
+        {
+            throw new ArgumentException("At least one chunk is required.", nameof(chunks));
+        }
+
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            DetachTrackedChunks(document.Id);
+
+            await dbContext.Embeddings
+                .Where(embedding => dbContext.DocumentChunks
+                    .Where(chunk => chunk.DocumentId == document.Id)
+                    .Select(chunk => chunk.Id)
+                    .Contains(embedding.DocumentChunkId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await dbContext.DocumentChunks
+                .Where(chunk => chunk.DocumentId == document.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            document.CompleteProcessing(chunks);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        });
+    }
+
     public void Remove(Document document)
     {
         dbContext.Documents.Remove(document);
@@ -65,5 +101,26 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
                  document.Permissions.Any(permission => permission.UserId == ownerUserId)) &&
                 document.Status == DocumentProcessingStatus.Processed)
             .ToListAsync(cancellationToken);
+    }
+
+    private void DetachTrackedChunks(Guid documentId)
+    {
+        var trackedChunkIds = dbContext.ChangeTracker
+            .Entries<DocumentChunk>()
+            .Where(entry => entry.Entity.DocumentId == documentId)
+            .Select(entry => entry.Entity.Id)
+            .ToHashSet();
+
+        foreach (var entry in dbContext.ChangeTracker.Entries<Embedding>()
+                     .Where(entry => trackedChunkIds.Contains(entry.Entity.DocumentChunkId)))
+        {
+            entry.State = EntityState.Detached;
+        }
+
+        foreach (var entry in dbContext.ChangeTracker.Entries<DocumentChunk>()
+                     .Where(entry => entry.Entity.DocumentId == documentId))
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 }

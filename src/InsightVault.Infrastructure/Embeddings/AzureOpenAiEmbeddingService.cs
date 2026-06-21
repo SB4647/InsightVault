@@ -29,7 +29,11 @@ public sealed class AzureOpenAiEmbeddingService(
         request.Headers.Add("api-key", _options.ApiKey);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var respText = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"Azure OpenAI request failed. Status={(int)response.StatusCode} {response.ReasonPhrase}. RequestUri={request.RequestUri}. ResponseBody={respText}");
+        }
 
         var body = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken);
         var embedding = body?.Data.FirstOrDefault()?.Embedding;
@@ -66,6 +70,11 @@ public sealed class AzureOpenAiEmbeddingService(
         if (string.IsNullOrWhiteSpace(_options.DeploymentName))
         {
             throw new InvalidOperationException("AzureOpenAI:DeploymentName is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.ApiVersion))
+        {
+            throw new InvalidOperationException("AzureOpenAI:ApiVersion is required.");
         }
     }
 
