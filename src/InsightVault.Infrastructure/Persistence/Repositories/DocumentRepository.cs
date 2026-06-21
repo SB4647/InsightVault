@@ -94,6 +94,11 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
         dbContext.Documents.Remove(document);
     }
 
+    public void AddPermission(DocumentPermission permission)
+    {
+        dbContext.DocumentPermissions.Add(permission);
+    }
+
     public async Task<IReadOnlyList<Document>> ListProcessedDocumentsAsync(
         string ownerUserId,
         CancellationToken cancellationToken = default)

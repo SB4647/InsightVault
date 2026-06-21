@@ -20,6 +20,8 @@ public interface IDocumentRepository
         IReadOnlyList<DocumentChunk> chunks,
         CancellationToken cancellationToken = default);
 
+    void AddPermission(DocumentPermission permission);
+
     void Remove(Document document);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);

@@ -151,6 +151,10 @@ public class DocumentProcessingServiceTests
             return Task.CompletedTask;
         }
 
+        public void AddPermission(DocumentPermission permission)
+        {
+        }
+
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveChangesCallCount++;

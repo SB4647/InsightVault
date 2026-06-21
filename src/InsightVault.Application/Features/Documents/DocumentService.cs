@@ -109,6 +109,7 @@ public sealed class DocumentService(
             ?? throw new InvalidOperationException($"User '{command.SharedWithEmail}' was not found.");
 
         var permission = document.ShareWithViewer(sharedWithUser.UserId);
+        documentRepository.AddPermission(permission);
         await documentRepository.SaveChangesAsync(cancellationToken);
 
         return new DocumentShareDto(

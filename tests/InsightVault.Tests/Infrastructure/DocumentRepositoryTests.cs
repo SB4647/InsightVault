@@ -11,6 +11,73 @@ namespace InsightVault.Tests.Infrastructure;
 public sealed class DocumentRepositoryTests
 {
     [Fact]
+    public async Task AddPermission_InsertsNewPermissionForTrackedDocument()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using (var setupContext = new ApplicationDbContext(options))
+        {
+            await setupContext.Database.EnsureCreatedAsync();
+
+            setupContext.Users.AddRange(
+                new ApplicationUser
+                {
+                    Id = "owner-1",
+                    UserName = "owner@example.com",
+                    NormalizedUserName = "OWNER@EXAMPLE.COM",
+                    Email = "owner@example.com",
+                    NormalizedEmail = "OWNER@EXAMPLE.COM",
+                    EmailConfirmed = true
+                },
+                new ApplicationUser
+                {
+                    Id = "viewer-1",
+                    UserName = "viewer@example.com",
+                    NormalizedUserName = "VIEWER@EXAMPLE.COM",
+                    Email = "viewer@example.com",
+                    NormalizedEmail = "VIEWER@EXAMPLE.COM",
+                    EmailConfirmed = true
+                });
+
+            setupContext.Documents.Add(Document.Create(
+                "sample.pdf",
+                "application/pdf",
+                256,
+                "documents/sample.pdf",
+                new DateTime(2026, 6, 21, 2, 0, 0, DateTimeKind.Utc),
+                "owner-1"));
+
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using (var sharingContext = new ApplicationDbContext(options))
+        {
+            var repository = new DocumentRepository(sharingContext);
+            var documentId = sharingContext.Documents.Select(document => document.Id).Single();
+            var document = await repository.GetByIdAsync(documentId, "owner-1");
+
+            Assert.NotNull(document);
+
+            var permission = document.ShareWithViewer("viewer-1");
+            repository.AddPermission(permission);
+            await repository.SaveChangesAsync();
+        }
+
+        await using (var assertionContext = new ApplicationDbContext(options))
+        {
+            var permission = await assertionContext.DocumentPermissions.SingleAsync();
+
+            Assert.Equal("viewer-1", permission.UserId);
+            Assert.Equal(DocumentPermissionLevel.Viewer, permission.Level);
+        }
+    }
+
+    [Fact]
     public async Task ReplaceChunksAsync_ReprocessesExistingDocumentWithoutStaleEmbeddingUpdates()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
