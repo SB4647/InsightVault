@@ -63,6 +63,7 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
             DetachTrackedChunks(document.Id);
+            dbContext.Entry(document).State = EntityState.Detached;
 
             await dbContext.Embeddings
                 .Where(embedding => dbContext.DocumentChunks
@@ -75,11 +76,17 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
                 .Where(chunk => chunk.DocumentId == document.Id)
                 .ExecuteDeleteAsync(cancellationToken);
 
-            document.CompleteProcessing(chunks);
+            var trackedDocument = await dbContext.Documents
+                .SingleAsync(existingDocument => existingDocument.Id == document.Id, cancellationToken);
+
+            trackedDocument.CompleteProcessing(chunks);
+            MarkChunksAsAdded(chunks);
             await dbContext.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         });
+
+        document.CompleteProcessing(chunks);
     }
 
     public void Remove(Document document)
@@ -121,6 +128,19 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
                      .Where(entry => entry.Entity.DocumentId == documentId))
         {
             entry.State = EntityState.Detached;
+        }
+    }
+
+    private void MarkChunksAsAdded(IEnumerable<DocumentChunk> chunks)
+    {
+        foreach (var chunk in chunks)
+        {
+            dbContext.Entry(chunk).State = EntityState.Added;
+
+            if (chunk.Embedding is not null)
+            {
+                dbContext.Entry(chunk.Embedding).State = EntityState.Added;
+            }
         }
     }
 }

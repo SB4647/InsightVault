@@ -291,6 +291,15 @@ public class DocumentServiceTests
             Documents.Remove(document);
         }
 
+        public Task ReplaceChunksAsync(
+            Document document,
+            IReadOnlyList<DocumentChunk> chunks,
+            CancellationToken cancellationToken = default)
+        {
+            document.CompleteProcessing(chunks);
+            return Task.CompletedTask;
+        }
+
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveChangesCallCount++;

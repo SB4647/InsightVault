@@ -2,6 +2,7 @@ using InsightVault.Application.Features.Documents.Processing.Commands;
 using InsightVault.Application.Features.Documents.Processing.DTOs;
 using InsightVault.Application.Interfaces;
 using InsightVault.Domain.Entities;
+using InsightVault.Domain.Enums;
 
 namespace InsightVault.Application.Features.Documents.Processing;
 
@@ -44,8 +45,7 @@ public sealed class DocumentProcessingService(
                 chunks.Add(chunk);
             }
 
-            document.CompleteProcessing(chunks);
-            await documentRepository.SaveChangesAsync(cancellationToken);
+            await documentRepository.ReplaceChunksAsync(document, chunks, cancellationToken);
 
             return new DocumentProcessingResultDto(
                 document.Id,
@@ -54,8 +54,12 @@ public sealed class DocumentProcessingService(
         }
         catch
         {
-            document.MarkProcessingFailed();
-            await documentRepository.SaveChangesAsync(cancellationToken);
+            if (document.Status != DocumentProcessingStatus.Processed)
+            {
+                document.MarkProcessingFailed();
+                await documentRepository.SaveChangesAsync(cancellationToken);
+            }
+
             throw;
         }
     }
