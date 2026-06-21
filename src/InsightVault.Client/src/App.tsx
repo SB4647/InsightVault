@@ -279,26 +279,29 @@ function App() {
     <main className="app-shell">
       <section className="page-header">
         <p className="eyebrow">InsightVault</p>
-        <h1>Document Library</h1>
-        <p>
-          Upload source documents, process them, search semantically, and ask grounded
-          questions across your private library.
-        </p>
+        <div className="page-header-content">
+          <div>
+            <h1>Document Library</h1>
+            <p>
+              Upload source documents, process them, search semantically, and ask grounded
+              questions across your private library.
+            </p>
+          </div>
+
+          {auth && (
+            <div className="account-summary" aria-label="Signed-in account">
+              <span>Signed in as</span>
+              <strong>{auth.email}</strong>
+              <button type="button" className="secondary-button" onClick={handleLogout}>
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
-      <section className="auth-panel" aria-labelledby="auth-title">
-        {auth ? (
-          <>
-            <div>
-              <h2 id="auth-title">Signed in</h2>
-              <p>{auth.email}</p>
-            </div>
-            <button type="button" onClick={handleLogout}>
-              Log out
-            </button>
-          </>
-        ) : (
-          <>
+      {!auth && (
+        <section className="auth-panel" aria-labelledby="auth-title">
             <div>
               <h2 id="auth-title">{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
               <p>Sign in to access your document library.</p>
@@ -330,9 +333,8 @@ function App() {
                 {authMode === 'login' ? 'Need an account?' : 'Already registered?'}
               </button>
             </form>
-          </>
-        )}
-      </section>
+        </section>
+      )}
 
       {error && <p className="message error">{error}</p>}
 
@@ -341,7 +343,7 @@ function App() {
           <section className="upload-panel" aria-labelledby="upload-title">
         <div>
           <h2 id="upload-title">Upload document</h2>
-          <p>Phase 1 stores the file and metadata only.</p>
+          <p>Add PDFs to your private library for processing, search, and chat.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="upload-form">

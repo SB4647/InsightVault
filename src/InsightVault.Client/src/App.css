@@ -8,6 +8,13 @@
   margin-bottom: 32px;
 }
 
+.page-header-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: #2563eb;
@@ -19,6 +26,31 @@
 
 .page-header p {
   max-width: 680px;
+}
+
+.account-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 8px 8px 8px 14px;
+  white-space: nowrap;
+}
+
+.account-summary span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.account-summary strong {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 14px;
+  text-overflow: ellipsis;
 }
 
 .upload-panel,
@@ -267,6 +299,24 @@ dd {
   .app-shell {
     width: min(100% - 24px, 1040px);
     padding: 28px 0;
+  }
+
+  .page-header-content {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .account-summary {
+    align-items: flex-start;
+    align-self: stretch;
+    border-radius: 8px;
+    flex-direction: column;
+    padding: 14px;
+    white-space: normal;
+  }
+
+  .account-summary strong {
+    max-width: 100%;
   }
 
   .upload-panel,
