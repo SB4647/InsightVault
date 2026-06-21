@@ -30,6 +30,12 @@ The screenshots below show the main local workflow: authentication, processed do
 
 Local account login using JWT authentication.
 
+### Main Page
+
+![InsightVault main page](docs/screenshots/Main%20Page%20View.jpg)
+
+Signed-in document workspace with upload, search, chat, and document management areas.
+
 ### Uploaded Documents
 
 ![Uploaded documents with processed status](docs/screenshots/Upload%20documents%20result.png)
