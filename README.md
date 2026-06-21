@@ -20,43 +20,31 @@ It is built as a portfolio-grade full-stack project using ASP.NET Core, React, S
 
 ## Screenshots
 
-Screenshots are intentionally left as placeholders until the repository is ready to make public. Add images under `docs/screenshots/` using these filenames.
+The screenshots below show the main local workflow: authentication, processed document management, semantic search, and RAG chat with source citations.
 
-### Document Library
+### Login
 
-Placeholder: `docs/screenshots/01-document-library-overview.png`
+![InsightVault login page](docs/screenshots/Log%20in%20page.png)
 
-Show the logged-in app with the upload panel, semantic search panel, RAG chat panel, and document list visible.
+Local account login using JWT authentication.
 
-### Upload And Document Management
+### Uploaded Documents
 
-Placeholder: `docs/screenshots/02-uploaded-documents.png`
+![Uploaded documents with processed status](docs/screenshots/Upload%20documents%20result.png)
 
-Show uploaded PDFs with status, chunk count, access level, process, share, and delete actions.
-
-### Document Processing
-
-Placeholder: `docs/screenshots/03-processed-document.png`
-
-Show a processed document with `Processed` status and a chunk count greater than zero.
+Uploaded PDF with processing status, chunk count, sharing, refresh, and delete actions.
 
 ### Semantic Search
 
-Placeholder: `docs/screenshots/04-semantic-search.png`
+![Semantic search results](docs/screenshots/Semantic%20search%20result.png)
 
-Show a semantic search query with ranked results and similarity scores.
+Semantic search over processed document chunks with similarity scores.
 
-### RAG Chat With Source Citations
+### RAG Chat
 
-Placeholder: `docs/screenshots/05-rag-chat.png`
+![RAG chat answer with source citations](docs/screenshots/RAG%20chat%20result.png)
 
-Show a grounded answer with source citations from document chunks.
-
-### CI Quality Gates
-
-Placeholder: `docs/screenshots/06-github-actions-ci.png`
-
-Show GitHub Actions with Backend, Frontend, Docker, and Terraform jobs passing.
+Grounded answer generated from retrieved document chunks, with cited sources shown below the response.
 
 ## What It Does
 
