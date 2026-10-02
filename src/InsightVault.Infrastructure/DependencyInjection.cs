@@ -22,13 +22,14 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         var provider = configuration["Database:Provider"] ?? "SqlServer";
+        var usePostgres = string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase);
 
         if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString));
         }
-        else if (string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase))
+        else if (usePostgres)
         {
             services.AddDbContext<PostgresApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString, postgres => postgres.UseVector()));
@@ -77,6 +78,14 @@ public static class DependencyInjection
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentSearchRepository, DocumentRepository>();
+        if (usePostgres)
+        {
+            services.AddScoped<IVectorSearchRepository, PostgresVectorSearchRepository>();
+        }
+        else
+        {
+            services.AddScoped<IVectorSearchRepository, DocumentRepository>();
+        }
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddScoped<IBlobStorageService, BlobStorageService>();
         services.AddScoped<ITextExtractionService, PdfTextExtractionService>();

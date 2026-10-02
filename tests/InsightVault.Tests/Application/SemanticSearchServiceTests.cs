@@ -8,6 +8,16 @@ namespace InsightVault.Tests.Application;
 public class SemanticSearchServiceTests
 {
     [Fact]
+    public void Constructor_DependsOnVectorSearchRepository()
+    {
+        var constructor = typeof(SemanticSearchService).GetConstructors().Single();
+
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType.Name == "IVectorSearchRepository");
+    }
+
+    [Fact]
     public async Task SearchAsync_RanksChunksByCosineSimilarity()
     {
         var firstDocument = Document.Create(
@@ -34,7 +44,7 @@ public class SemanticSearchServiceTests
 
         var service = new SemanticSearchService(
             new StubEmbeddingService([1.0f, 0.0f]),
-            new InMemoryDocumentSearchRepository([firstDocument, secondDocument]));
+            new InMemoryVectorSearchRepository([firstDocument, secondDocument]));
 
         var results = await service.SearchAsync(new SearchDocumentsQuery("alpha", "user-1"));
 
@@ -59,7 +69,7 @@ public class SemanticSearchServiceTests
     {
         var service = new SemanticSearchService(
             new StubEmbeddingService([1.0f]),
-            new InMemoryDocumentSearchRepository([]));
+            new InMemoryVectorSearchRepository([]));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.SearchAsync(new SearchDocumentsQuery(" ", "user-1")));
@@ -78,7 +88,7 @@ public class SemanticSearchServiceTests
 
         var service = new SemanticSearchService(
             new StubEmbeddingService([1.0f]),
-            new InMemoryDocumentSearchRepository([document]));
+            new InMemoryVectorSearchRepository([document]));
 
         var results = await service.SearchAsync(new SearchDocumentsQuery("anything", "user-1"));
 
@@ -113,7 +123,7 @@ public class SemanticSearchServiceTests
 
         var service = new SemanticSearchService(
             new StubEmbeddingService([1.0f]),
-            new InMemoryDocumentSearchRepository([ownedDocument, otherDocument]));
+            new InMemoryVectorSearchRepository([ownedDocument, otherDocument]));
 
         var results = await service.SearchAsync(new SearchDocumentsQuery("content", "user-1"));
 
@@ -133,19 +143,57 @@ public class SemanticSearchServiceTests
         }
     }
 
-    private sealed class InMemoryDocumentSearchRepository(
-        IReadOnlyList<Document> documents) : IDocumentSearchRepository
+    private sealed class InMemoryVectorSearchRepository(
+        IReadOnlyList<Document> documents) : IVectorSearchRepository
     {
-        public Task<IReadOnlyList<Document>> ListProcessedDocumentsAsync(
-            string ownerUserId,
+        public Task<IReadOnlyList<VectorSearchMatch>> SearchAsync(
+            VectorSearchRequest request,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<Document>>(
+            return Task.FromResult<IReadOnlyList<VectorSearchMatch>>(
                 documents
                     .Where(document =>
-                        document.OwnerUserId == ownerUserId ||
-                        document.Permissions.Any(permission => permission.UserId == ownerUserId))
+                        document.OwnerUserId == request.OwnerUserId ||
+                        document.Permissions.Any(permission => permission.UserId == request.OwnerUserId))
+                    .SelectMany(document => document.Chunks
+                        .Where(chunk => chunk.Embedding is not null)
+                        .Select(chunk => new VectorSearchMatch(
+                            document.Id,
+                            document.OriginalFileName,
+                            chunk.Id,
+                            chunk.ChunkIndex,
+                            chunk.Text,
+                            CosineSimilarity(request.QueryEmbedding, chunk.Embedding!.GetVector()))))
+                    .OrderByDescending(match => match.Score)
+                    .ThenBy(match => match.DocumentName)
+                    .ThenBy(match => match.ChunkIndex)
+                    .Take(request.MaxResults)
                     .ToList());
+        }
+
+        private static double CosineSimilarity(
+            IReadOnlyList<float> left,
+            IReadOnlyList<float> right)
+        {
+            if (left.Count == 0 || right.Count == 0 || left.Count != right.Count)
+            {
+                return 0;
+            }
+
+            double dotProduct = 0;
+            double leftMagnitude = 0;
+            double rightMagnitude = 0;
+
+            for (var index = 0; index < left.Count; index++)
+            {
+                dotProduct += left[index] * right[index];
+                leftMagnitude += left[index] * left[index];
+                rightMagnitude += right[index] * right[index];
+            }
+
+            return leftMagnitude == 0 || rightMagnitude == 0
+                ? 0
+                : dotProduct / (Math.Sqrt(leftMagnitude) * Math.Sqrt(rightMagnitude));
         }
     }
 }
