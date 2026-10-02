@@ -77,6 +77,23 @@ This starts:
 
 The client container is optional. Local `npm run dev` is still faster for day-to-day frontend work.
 
+## Local PostgreSQL And pgvector Foundation
+
+The PostgreSQL + pgvector container is an opt-in local service. It is for database-backed vector retrieval testing and has no AWS dependency or cost.
+
+```powershell
+docker compose --profile postgres up -d postgres
+docker compose --profile postgres ps
+```
+
+It exposes PostgreSQL on `localhost:5433` and uses the in-container name `postgres` on port `5432`. `src/InsightVault.Api/appsettings.Postgres.example.json` documents the `Database:Provider=Postgres` value and Docker connection string for the provider-aware persistence work. It is not active until that provider path is implemented, so the existing SQL Server setup remains unchanged.
+
+To remove the disposable PostgreSQL data deliberately:
+
+```powershell
+docker compose --profile postgres down --volumes
+```
+
 ## Database Migrations
 
 Apply EF Core migrations to the Docker SQL Server with:
