@@ -1,6 +1,8 @@
 using System.Text.Json;
 using InsightVault.Infrastructure;
 using InsightVault.Infrastructure.Persistence;
+using InsightVault.Infrastructure.Storage;
+using InsightVault.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -72,6 +74,43 @@ public sealed class DatabaseConfigurationTests
     }
 
     [Fact]
+    public void AddInfrastructure_WhenS3StorageIsConfigured_RegistersS3StorageService()
+    {
+        var services = new ServiceCollection();
+
+        services.AddInfrastructure(CreateConfiguration("SqlServer", "S3"));
+
+        var storageRegistration = Assert.Single(services, descriptor =>
+            descriptor.ServiceType == typeof(IBlobStorageService));
+
+        Assert.Equal(typeof(S3BlobStorageService), storageRegistration.ImplementationType);
+    }
+
+    [Fact]
+    public void AddInfrastructure_WhenStorageProviderIsUnknown_ThrowsHelpfulException()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddInfrastructure(CreateConfiguration("SqlServer", "UnknownStorage")));
+
+        Assert.Contains("Storage:Provider", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddInfrastructure_WhenStorageProviderIsOmitted_KeepsAzureStorageAsTheDefault()
+    {
+        var services = new ServiceCollection();
+
+        services.AddInfrastructure(CreateConfiguration("SqlServer", null));
+
+        var storageRegistration = Assert.Single(services, descriptor =>
+            descriptor.ServiceType == typeof(IBlobStorageService));
+
+        Assert.Equal(typeof(BlobStorageService), storageRegistration.ImplementationType);
+    }
+
+    [Fact]
     public void InfrastructureAssembly_ProvidesPostgresDesignTimeContextFactory()
     {
         var factoryType = typeof(ApplicationDbContext).Assembly.GetType(
@@ -104,13 +143,17 @@ public sealed class DatabaseConfigurationTests
         throw new DirectoryNotFoundException("Could not locate the InsightVault repository root.");
     }
 
-    private static IConfiguration CreateConfiguration(string provider)
+    private static IConfiguration CreateConfiguration(string provider, string? storageProvider = "Azure")
     {
         return new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Database:Provider"] = provider,
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5433;Database=InsightVault;Username=postgres;Password=local"
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5433;Database=InsightVault;Username=postgres;Password=local",
+                ["Storage:Provider"] = storageProvider,
+                ["AzureBlobStorage:ConnectionString"] = "UseDevelopmentStorage=true",
+                ["AzureBlobStorage:ContainerName"] = "documents",
+                ["S3Storage:BucketName"] = "insightvault-tests"
             })
             .Build();
     }
