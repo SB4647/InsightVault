@@ -111,6 +111,24 @@ flowchart LR
     Api --> OpenAI
 ```
 
+### AWS-Ready Retrieval Path
+
+```mermaid
+flowchart LR
+    Browser["Browser"] --> Api["ASP.NET Core API"]
+
+    Api --> SqlServer["SQL Server\ncurrent local fallback"]
+    Api --> Postgres["PostgreSQL + pgvector\nproven locally"]
+    Postgres --> VectorSearch["database-side cosine search\nowner/viewer filtering"]
+
+    Api -. "future opt-in AWS deployment" .-> Ecs["ECS service"]
+    Ecs -.-> Rds["RDS PostgreSQL + pgvector"]
+    Ecs -.-> S3["S3 document storage"]
+    Ecs -.-> Sqs["SQS processing queue + worker"]
+```
+
+Solid connections show the current local implementation. Dashed connections show the planned AWS deployment design only: none of those AWS resources have been created or charged to this project.
+
 ### Clean Architecture
 
 ```mermaid
@@ -451,14 +469,38 @@ VITE_API_BASE_URL=https://localhost:7227 npm run dev
 
 ### Local PostgreSQL And pgvector Foundation
 
-The PostgreSQL service is opt-in while InsightVault retains its SQL Server development path. It is used for the local pgvector retrieval tests and does not create an AWS resource.
+The PostgreSQL service is opt-in while InsightVault retains its SQL Server development path. The API can select the PostgreSQL persistence provider with `Database:Provider=Postgres`; this enables pgvector-backed retrieval without removing the existing SQL Server path. Running it locally does not create an AWS resource.
 
 ```powershell
 docker compose --profile postgres up -d postgres
 docker compose --profile postgres ps
 ```
 
-PostgreSQL is available from the host at `localhost:5433`. The checked-in [PostgreSQL example configuration](src/InsightVault.Api/appsettings.Postgres.example.json) identifies the future `Database:Provider=Postgres` setting and uses the Docker network host name `postgres`. Provider selection is implemented in the next persistence step, so this file is an example rather than an active setting today.
+PostgreSQL is available from the host at `localhost:5433`. The checked-in [PostgreSQL example configuration](src/InsightVault.Api/appsettings.Postgres.example.json) sets `Database:Provider=Postgres` and uses the Docker network host name `postgres` for a containerised API. Use `localhost` instead when the API runs directly from Visual Studio or `dotnet run`.
+
+### Step 3 Local Proof: Completed
+
+The following evidence was run against the local Docker PostgreSQL service. It proves that InsightVault can create its PostgreSQL schema, enable pgvector, and execute protected vector retrieval without needing an AWS account or creating AWS costs.
+
+```powershell
+# 1. Start the opt-in PostgreSQL + pgvector service.
+docker compose --profile postgres up -d postgres
+
+# 2. Apply the PostgreSQL-specific EF Core migration.
+dotnet ef database update --project src/InsightVault.Infrastructure --startup-project src/InsightVault.Api --context PostgresApplicationDbContext
+
+# 3. Run the PostgreSQL + pgvector integration tests.
+dotnet test InsightVault.slnx --no-restore --filter "FullyQualifiedName~PostgresVectorSearchTests" --logger "console;verbosity=minimal"
+```
+
+Verified results:
+
+- Docker reported the `postgres` service as healthy and exposed it at `localhost:5433`.
+- EF Core applied `20261002061254_InitialPostgres` to the local PostgreSQL database. The first migration run may show an initial missing `__EFMigrationsHistory` query before EF Core creates that table; this is expected for an empty database.
+- The pgvector integration test run passed `2/2`: it checked nearest authorised chunk ranking and denied an unrelated user access to the vectors.
+- The full test suite also passed `49/49` tests.
+
+The `postgres-data` Docker volume is local to this computer. Stop the service when finished with `docker compose --profile postgres down`; use `--volumes` only when you intentionally want to erase that local database.
 
 The data volume is disposable. Remove it only when you intend to erase local PostgreSQL data:
 
