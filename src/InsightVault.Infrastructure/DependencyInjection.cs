@@ -22,7 +22,10 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         var provider = configuration["Database:Provider"] ?? "SqlServer";
+        var storageProvider = configuration["Storage:Provider"] ?? "Azure";
         var usePostgres = string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase);
+        var useS3Storage = string.Equals(storageProvider, "S3", StringComparison.OrdinalIgnoreCase);
+        var useAzureStorage = string.Equals(storageProvider, "Azure", StringComparison.OrdinalIgnoreCase);
 
         if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
@@ -42,6 +45,12 @@ public static class DependencyInjection
                 "Database:Provider must be either 'SqlServer' or 'Postgres'.");
         }
 
+        if (!useAzureStorage && !useS3Storage)
+        {
+            throw new InvalidOperationException(
+                "Storage:Provider must be either 'Azure' or 'S3'.");
+        }
+
         services
             .AddIdentityCore<ApplicationUser>(options =>
             {
@@ -56,6 +65,17 @@ public static class DependencyInjection
             var section = configuration.GetSection("AzureBlobStorage");
             options.ConnectionString = section["ConnectionString"] ?? string.Empty;
             options.ContainerName = section["ContainerName"] ?? "documents";
+        });
+
+        services.Configure<S3StorageOptions>(options =>
+        {
+            var section = configuration.GetSection("S3Storage");
+            options.BucketName = section["BucketName"] ?? string.Empty;
+            options.Region = section["Region"] ?? "ap-southeast-2";
+            options.ServiceUrl = section["ServiceUrl"] ?? string.Empty;
+            options.AccessKey = section["AccessKey"] ?? string.Empty;
+            options.SecretKey = section["SecretKey"] ?? string.Empty;
+            options.ForcePathStyle = bool.TryParse(section["ForcePathStyle"], out var forcePathStyle) && forcePathStyle;
         });
 
         services.Configure<AzureOpenAiEmbeddingOptions>(options =>
@@ -87,7 +107,14 @@ public static class DependencyInjection
             services.AddScoped<IVectorSearchRepository, DocumentRepository>();
         }
         services.AddScoped<IUserLookupService, UserLookupService>();
-        services.AddScoped<IBlobStorageService, BlobStorageService>();
+        if (useS3Storage)
+        {
+            services.AddScoped<IBlobStorageService, S3BlobStorageService>();
+        }
+        else
+        {
+            services.AddScoped<IBlobStorageService, BlobStorageService>();
+        }
         services.AddScoped<ITextExtractionService, PdfTextExtractionService>();
         services.AddHttpClient<IEmbeddingService, AzureOpenAiEmbeddingService>();
         services.AddHttpClient<IChatCompletionService, AzureOpenAiChatCompletionService>();

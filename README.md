@@ -4,7 +4,7 @@
 
 InsightVault is an AI-powered document intelligence application for uploading PDFs, processing their content, searching semantically, and asking grounded questions over a private document library.
 
-It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, Azure Blob Storage, Azure OpenAI, Docker, Terraform, and GitHub Actions.
+It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, Azure Blob Storage, an S3-compatible storage adapter, Azure OpenAI, Docker, Terraform, and GitHub Actions.
 
 ## Highlights
 
@@ -15,7 +15,8 @@ It is built as a portfolio-grade full-stack project using ASP.NET Core, React, S
 - Semantic search with cosine similarity ranking
 - RAG chat with grounded answers and source citations
 - Clean Architecture project structure
-- Docker Compose local environment for API and SQL Server
+- Azure Blob Storage by default, with an S3-compatible document-storage adapter
+- Docker Compose local environment for API, SQL Server, PostgreSQL, and opt-in S3Mock
 - Terraform scaffold for low-cost Azure resource management and optional paid hosting
 - GitHub Actions CI for backend, frontend, Docker, and Terraform validation
 - xUnit tests for Domain and Application behavior
@@ -59,7 +60,7 @@ Grounded answer generated from retrieved document chunks, with cited sources sho
 ### Document Management
 
 - Upload PDF documents from the React client
-- Store uploaded files in Azure Blob Storage
+- Store uploaded files in Azure Blob Storage by default, or an S3-compatible implementation when explicitly selected
 - Store document metadata in SQL Server
 - List owned and shared documents
 - Delete owned documents from the UI and API
@@ -119,6 +120,7 @@ flowchart LR
 
     Api --> SqlServer["SQL Server\ncurrent local fallback"]
     Api --> Postgres["PostgreSQL + pgvector\nproven locally"]
+    Api --> ObjectStorage["Azure Blob default / S3-compatible adapter\nS3Mock proven locally"]
     Postgres --> VectorSearch["database-side cosine search\nowner/viewer filtering"]
 
     Api -. "future opt-in AWS deployment" .-> Ecs["ECS service"]
@@ -325,6 +327,9 @@ Returns:
     "ConnectionString": "",
     "ContainerName": "documents"
   },
+  "Storage": {
+    "Provider": "Azure"
+  },
   "AzureOpenAI": {
     "Endpoint": "",
     "ApiKey": "",
@@ -348,6 +353,8 @@ Returns:
   }
 }
 ```
+
+`Storage:Provider` is `Azure` by default. Set it to `S3` only when using the S3 adapter. For a deployed S3 bucket, configure `S3Storage:BucketName` and `S3Storage:Region` only: leave `ServiceUrl`, `AccessKey`, and `SecretKey` empty so the AWS SDK uses the deployed workload role. Never copy developer SSO credentials or static AWS access keys into application configuration.
 
 Use user secrets or environment variables for local secrets:
 
@@ -508,6 +515,33 @@ The data volume is disposable. Remove it only when you intend to erase local Pos
 docker compose --profile postgres down --volumes
 ```
 
+### Local S3-Compatible Document Storage
+
+The S3 adapter is opt-in; Azure Blob remains the default. The local S3Mock emulator uses dummy local-only credentials and does not contact AWS or use your `insightvault-dev` SSO profile.
+
+Start the emulator for a manual API run:
+
+```powershell
+docker compose --profile s3 up -d s3mock
+```
+
+To run the Docker API against the emulator, copy `docker-compose.override.example.yml` to the ignored `docker-compose.override.yml`, then start the full local stack with the `s3` profile:
+
+```powershell
+Copy-Item docker-compose.override.example.yml docker-compose.override.yml
+docker compose --profile s3 up -d
+```
+
+The copied override selects `Storage:Provider=S3`, points the API to `http://s3mock:9090`, and uses a pre-created local bucket. It starts the API, SQL Server, and S3Mock; it still does not contact AWS.
+
+The focused integration test starts and removes its own temporary S3Mock container, so it needs Docker Desktop but no AWS account or configuration:
+
+```powershell
+dotnet test tests/InsightVault.Tests/InsightVault.Tests.csproj --no-restore --filter "FullyQualifiedName~S3BlobStorageServiceTests"
+```
+
+For a direct local API run instead of Docker Compose, use the checked-in [S3 local example](src/InsightVault.Api/appsettings.S3.example.json) as a reference and set equivalent environment variables for the process. Do not commit a copied `appsettings.S3.json`; it is ignored because it may contain local credentials.
+
 ## Database
 
 Current EF Core migrations:
@@ -550,6 +584,10 @@ terraform plan -var-file="dev.tfvars"
 Do not commit `dev.tfvars`, `imports.tf`, or Terraform state files.
 
 See [docs/deployment.md](docs/deployment.md) for local, Docker, Terraform import, and optional paid hosting notes.
+
+### AWS S3 Design: Declared, Not Deployed
+
+The separate [AWS Terraform module](infra/aws/README.md) declares a private document bucket, S3-managed encryption, public-access blocking, TLS-only access, versioning, and lifecycle cleanup. `terraform init -backend=false` and `terraform validate` are safe local checks. Do not run `plan` or `apply` for this module until you deliberately choose to deploy and accept the associated AWS charges.
 
 ## Engineering Practices
 

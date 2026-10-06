@@ -413,6 +413,7 @@ override.tf.json
 !.env.example
 docker-compose.override.yml
 appsettings.Postgres.json
+appsettings.S3.json
 
 # Windows Installer files from build outputs
 *.cab
