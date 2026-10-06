@@ -9,6 +9,9 @@ namespace InsightVault.Infrastructure.Persistence.Repositories;
 public sealed class PostgresVectorSearchRepository(
     PostgresApplicationDbContext dbContext) : IVectorSearchRepository
 {
+    /// <summary>
+    /// Executes permission-filtered cosine similarity search inside PostgreSQL rather than loading all vectors into memory.
+    /// </summary>
     public async Task<IReadOnlyList<VectorSearchMatch>> SearchAsync(
         VectorSearchRequest request,
         CancellationToken cancellationToken = default)

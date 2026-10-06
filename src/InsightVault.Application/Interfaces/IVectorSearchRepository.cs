@@ -2,6 +2,9 @@ namespace InsightVault.Application.Interfaces;
 
 public interface IVectorSearchRepository
 {
+    /// <summary>
+    /// Finds the highest-ranked document chunks the requesting user is allowed to read.
+    /// </summary>
     Task<IReadOnlyList<VectorSearchMatch>> SearchAsync(
         VectorSearchRequest request,
         CancellationToken cancellationToken = default);

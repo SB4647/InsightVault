@@ -10,6 +10,9 @@ public sealed class PostgresApplicationDbContextFactory
     private const string DefaultConnectionString =
         "Host=localhost;Port=5433;Database=InsightVault;Username=postgres;Password=InsightVault-Local-Only-Password-123!";
 
+    /// <summary>
+    /// Creates the PostgreSQL context used by EF Core commands such as migration generation and updates.
+    /// </summary>
     public PostgresApplicationDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")

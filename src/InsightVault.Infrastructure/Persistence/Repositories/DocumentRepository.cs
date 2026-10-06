@@ -120,6 +120,7 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext)
         VectorSearchRequest request,
         CancellationToken cancellationToken = default)
     {
+        // SQL Server fallback while PostgreSQL + pgvector becomes the primary production path.
         var documents = await ListProcessedDocumentsAsync(request.OwnerUserId, cancellationToken);
 
         return documents

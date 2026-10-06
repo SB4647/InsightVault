@@ -21,12 +21,18 @@ public sealed class PostgresApplicationDbContext(
             .HasColumnType($"vector({VectorDimensions})");
     }
 
+    /// <summary>
+    /// Synchronizes domain embedding JSON into PostgreSQL's native pgvector column before a synchronous save.
+    /// </summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         SynchronizeVectors();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
+    /// <summary>
+    /// Synchronizes domain embedding JSON into PostgreSQL's native pgvector column before an asynchronous save.
+    /// </summary>
     public override Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
@@ -35,6 +41,9 @@ public sealed class PostgresApplicationDbContext(
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
+    /// <summary>
+    /// Converts changed embedding values to pgvector and rejects vectors with an unexpected dimension.
+    /// </summary>
     private void SynchronizeVectors()
     {
         foreach (var entry in ChangeTracker.Entries<Embedding>()
