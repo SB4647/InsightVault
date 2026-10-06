@@ -1,4 +1,5 @@
 using InsightVault.Api.Auth;
+using InsightVault.Api.ProcessingQueue;
 using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Processing;
@@ -21,6 +22,10 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddInfrastructure(builder.Configuration);
+if (!string.Equals(builder.Configuration["Queue:Provider"], "Disabled", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHostedService<DocumentProcessingOutboxHostedService>();
+}
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 
 var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();

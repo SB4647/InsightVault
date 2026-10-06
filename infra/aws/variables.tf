@@ -26,3 +26,9 @@ variable "documents_bucket_name" {
   description = "Globally unique S3 bucket name for private InsightVault documents when deployment is explicitly approved."
   type        = string
 }
+
+variable "enable_document_processing_queues" {
+  description = "Creates the document processing SQS queue and DLQ only when a deployment is explicitly approved."
+  type        = bool
+  default     = false
+}

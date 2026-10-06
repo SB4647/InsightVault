@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\InsightVault.Application\InsightVault.Application.csproj" />
+    <ProjectReference Include="..\InsightVault.Infrastructure\InsightVault.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

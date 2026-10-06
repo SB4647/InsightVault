@@ -4,7 +4,7 @@ import './App.css'
 import {
   deleteDocument,
   getDocuments,
-  processDocument,
+  retryDocumentProcessing,
   shareDocument,
   uploadDocument,
 } from './api/documents'
@@ -169,12 +169,12 @@ function App() {
     }
   }
 
-  async function handleProcess(documentId: string) {
+  async function handleRetryProcessing(documentId: string) {
     setProcessingDocumentId(documentId)
     setError(null)
 
     try {
-      const result = await processDocument(documentId, auth?.token ?? '')
+      const result = await retryDocumentProcessing(documentId, auth?.token ?? '')
       setDocuments((current) =>
         current.map((document) =>
           document.id === documentId
@@ -183,7 +183,7 @@ function App() {
         ),
       )
     } catch (err) {
-      handleRequestError(err, 'Could not process document.')
+      handleRequestError(err, 'Could not retry document processing.')
     } finally {
       setProcessingDocumentId(null)
     }
@@ -478,13 +478,13 @@ function App() {
                 </dl>
                 {document.isOwner ? (
                   <div className="document-actions">
-                    <button
+                    {document.status === 'Failed' ? <button
                       type="button"
-                      onClick={() => handleProcess(document.id)}
-                      disabled={processingDocumentId === document.id || document.status === 'Processed'}
+                      onClick={() => handleRetryProcessing(document.id)}
+                      disabled={processingDocumentId === document.id}
                     >
-                      {processingDocumentId === document.id ? 'Processing...' : 'Process'}
-                    </button>
+                      {processingDocumentId === document.id ? 'Retrying...' : 'Retry processing'}
+                    </button> : null}
                     <form className="share-form" onSubmit={(event) => handleShare(event, document.id)}>
                       <input
                         type="email"

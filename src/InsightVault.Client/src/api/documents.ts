@@ -43,12 +43,6 @@ export async function uploadDocument(file: File, token: string): Promise<Documen
   return response.json()
 }
 
-export interface DocumentProcessingResultDto {
-  documentId: string
-  chunkCount: number
-  status: string
-}
-
 export interface DocumentShareDto {
   documentId: string
   sharedWithUserId: string
@@ -56,17 +50,17 @@ export interface DocumentShareDto {
   accessLevel: string
 }
 
-export async function processDocument(
+export async function retryDocumentProcessing(
   documentId: string,
   token: string,
-): Promise<DocumentProcessingResultDto> {
-  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/process`, {
+): Promise<DocumentDto> {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/retry-processing`, {
     method: 'POST',
     headers: authHeaders(token),
   })
 
   if (!response.ok) {
-    await throwApiError(response, 'Could not process document.')
+    await throwApiError(response, 'Could not retry document processing.')
   }
 
   return response.json()

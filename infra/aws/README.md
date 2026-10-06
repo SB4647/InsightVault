@@ -2,6 +2,8 @@
 
 This module declares the private S3 document-storage design while deliberately containing no remote state, `plan`, or `apply` automation. The checked-in configuration does not create an AWS resource by itself.
 
+It also defines an opt-in SQS document-processing design: a standard processing queue, a private DLQ after three deliveries, 20-second long polling, a 15-minute visibility timeout, and SQS-managed encryption. `enable_document_processing_queues` defaults to `false`; this step does not deploy it or create workload IAM roles.
+
 The S3 design includes:
 
 - a private bucket with all public-access controls blocked

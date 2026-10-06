@@ -74,3 +74,23 @@ resource "aws_s3_bucket_policy" "documents" {
   bucket = aws_s3_bucket.documents.id
   policy = data.aws_iam_policy_document.documents_bucket_tls_only.json
 }
+
+resource "aws_sqs_queue" "document_processing_dlq" {
+  count = var.enable_document_processing_queues ? 1 : 0
+  name  = "${var.project_name}-${var.environment}-document-processing-dlq"
+
+  sqs_managed_sse_enabled = true
+}
+
+resource "aws_sqs_queue" "document_processing" {
+  count                      = var.enable_document_processing_queues ? 1 : 0
+  name                       = "${var.project_name}-${var.environment}-document-processing"
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 900
+  sqs_managed_sse_enabled    = true
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.document_processing_dlq[0].arn
+    maxReceiveCount     = 3
+  })
+}

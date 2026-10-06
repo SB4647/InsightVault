@@ -2,9 +2,6 @@ using InsightVault.Api.Auth;
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Commands;
 using InsightVault.Application.Features.Documents.DTOs;
-using InsightVault.Application.Features.Documents.Processing;
-using InsightVault.Application.Features.Documents.Processing.Commands;
-using InsightVault.Application.Features.Documents.Processing.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,8 +11,7 @@ namespace InsightVault.Api.Controllers;
 [Authorize]
 [Route("api/[controller]")]
 public sealed class DocumentsController(
-    IDocumentService documentService,
-    IDocumentProcessingService documentProcessingService) : ControllerBase
+    IDocumentService documentService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<DocumentDto>), StatusCodes.Status200OK)]
@@ -70,17 +66,18 @@ public sealed class DocumentsController(
             document);
     }
 
-    [HttpPost("{id:guid}/process")]
-    [ProducesResponseType(typeof(DocumentProcessingResultDto), StatusCodes.Status200OK)]
+    [HttpPost("{id:guid}/retry-processing")]
+    [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<DocumentProcessingResultDto>> ProcessDocument(
+    public async Task<ActionResult<DocumentDto>> RetryProcessing(
         Guid id,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await documentProcessingService.ProcessAsync(
-                new ProcessDocumentCommand(id, User.GetRequiredUserId()),
+            var result = await documentService.RetryProcessingAsync(
+                new RetryDocumentProcessingCommand(id, User.GetRequiredUserId()),
                 cancellationToken);
 
             return Ok(result);
@@ -88,6 +85,10 @@ public sealed class DocumentsController(
         catch (InvalidOperationException ex) when (ex.Message.Contains("was not found", StringComparison.OrdinalIgnoreCase))
         {
             return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 
