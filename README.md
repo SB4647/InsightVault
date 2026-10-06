@@ -449,6 +449,23 @@ Override it with:
 VITE_API_BASE_URL=https://localhost:7227 npm run dev
 ```
 
+### Local PostgreSQL And pgvector Foundation
+
+The PostgreSQL service is opt-in while InsightVault retains its SQL Server development path. It is used for the local pgvector retrieval tests and does not create an AWS resource.
+
+```powershell
+docker compose --profile postgres up -d postgres
+docker compose --profile postgres ps
+```
+
+PostgreSQL is available from the host at `localhost:5433`. The checked-in [PostgreSQL example configuration](src/InsightVault.Api/appsettings.Postgres.example.json) identifies the future `Database:Provider=Postgres` setting and uses the Docker network host name `postgres`. Provider selection is implemented in the next persistence step, so this file is an example rather than an active setting today.
+
+The data volume is disposable. Remove it only when you intend to erase local PostgreSQL data:
+
+```powershell
+docker compose --profile postgres down --volumes
+```
+
 ## Database
 
 Current EF Core migrations:

@@ -9,3 +9,7 @@ services:
       AzureOpenAI__ApiKey: "<your-azure-openai-api-key>"
       AzureOpenAI__EmbeddingDeploymentName: "text-embedding-3-small"
       AzureOpenAI__ChatDeploymentName: "gpt-4.1-mini"
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: "<your-local-postgres-password>"

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Pgvector.EntityFrameworkCore;
 
 namespace InsightVault.Infrastructure;
 
@@ -19,8 +20,27 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var provider = configuration["Database:Provider"] ?? "SqlServer";
+        var usePostgres = string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase);
+
+        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(connectionString));
+        }
+        else if (usePostgres)
+        {
+            services.AddDbContext<PostgresApplicationDbContext>(options =>
+                options.UseNpgsql(connectionString, postgres => postgres.UseVector()));
+            services.AddScoped<ApplicationDbContext>(serviceProvider =>
+                serviceProvider.GetRequiredService<PostgresApplicationDbContext>());
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Database:Provider must be either 'SqlServer' or 'Postgres'.");
+        }
 
         services
             .AddIdentityCore<ApplicationUser>(options =>
@@ -58,6 +78,14 @@ public static class DependencyInjection
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentSearchRepository, DocumentRepository>();
+        if (usePostgres)
+        {
+            services.AddScoped<IVectorSearchRepository, PostgresVectorSearchRepository>();
+        }
+        else
+        {
+            services.AddScoped<IVectorSearchRepository, DocumentRepository>();
+        }
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddScoped<IBlobStorageService, BlobStorageService>();
         services.AddScoped<ITextExtractionService, PdfTextExtractionService>();

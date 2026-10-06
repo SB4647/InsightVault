@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InsightVault.Infrastructure.Persistence.Repositories;
 
-public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocumentRepository, IDocumentSearchRepository
+public sealed class DocumentRepository(ApplicationDbContext dbContext)
+    : IDocumentRepository, IDocumentSearchRepository, IVectorSearchRepository
 {
     public async Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
@@ -115,6 +116,29 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<VectorSearchMatch>> SearchAsync(
+        VectorSearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var documents = await ListProcessedDocumentsAsync(request.OwnerUserId, cancellationToken);
+
+        return documents
+            .SelectMany(document => document.Chunks
+                .Where(chunk => chunk.Embedding is not null)
+                .Select(chunk => new VectorSearchMatch(
+                    document.Id,
+                    document.OriginalFileName,
+                    chunk.Id,
+                    chunk.ChunkIndex,
+                    chunk.Text,
+                    CosineSimilarity(request.QueryEmbedding, chunk.Embedding!.GetVector()))))
+            .OrderByDescending(match => match.Score)
+            .ThenBy(match => match.DocumentName)
+            .ThenBy(match => match.ChunkIndex)
+            .Take(request.MaxResults)
+            .ToList();
+    }
+
     private void DetachTrackedChunks(Guid documentId)
     {
         var trackedChunkIds = dbContext.ChangeTracker
@@ -147,5 +171,33 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext) : IDocume
                 dbContext.Entry(chunk.Embedding).State = EntityState.Added;
             }
         }
+    }
+
+    private static double CosineSimilarity(
+        IReadOnlyList<float> left,
+        IReadOnlyList<float> right)
+    {
+        if (left.Count == 0 || right.Count == 0 || left.Count != right.Count)
+        {
+            return 0;
+        }
+
+        double dotProduct = 0;
+        double leftMagnitude = 0;
+        double rightMagnitude = 0;
+
+        for (var i = 0; i < left.Count; i++)
+        {
+            dotProduct += left[i] * right[i];
+            leftMagnitude += left[i] * left[i];
+            rightMagnitude += right[i] * right[i];
+        }
+
+        if (leftMagnitude == 0 || rightMagnitude == 0)
+        {
+            return 0;
+        }
+
+        return dotProduct / (Math.Sqrt(leftMagnitude) * Math.Sqrt(rightMagnitude));
     }
 }
