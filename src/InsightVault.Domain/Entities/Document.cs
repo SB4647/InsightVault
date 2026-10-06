@@ -111,6 +111,19 @@ public class Document
         Status = DocumentProcessingStatus.Failed;
     }
 
+    /// <summary>
+    /// Returns a failed document to the uploaded state so it can be processed by a new queued job.
+    /// </summary>
+    public void ResetForRetry()
+    {
+        if (Status != DocumentProcessingStatus.Failed)
+        {
+            throw new InvalidOperationException("Only failed documents can be retried.");
+        }
+
+        Status = DocumentProcessingStatus.Uploaded;
+    }
+
     public DocumentShareResult ShareWithViewer(string userId)
     {
         if (string.IsNullOrWhiteSpace(userId))

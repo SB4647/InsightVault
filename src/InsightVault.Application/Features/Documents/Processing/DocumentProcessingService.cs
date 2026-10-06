@@ -23,6 +23,14 @@ public sealed class DocumentProcessingService(
                 cancellationToken)
             ?? throw new InvalidOperationException($"Document '{command.DocumentId}' was not found.");
 
+        if (document.Status == DocumentProcessingStatus.Processed)
+        {
+            return new DocumentProcessingResultDto(
+                document.Id,
+                document.Chunks.Count,
+                document.Status.ToString());
+        }
+
         document.StartProcessing();
 
         try

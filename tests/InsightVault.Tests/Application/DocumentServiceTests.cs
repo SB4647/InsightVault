@@ -1,7 +1,9 @@
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Commands;
 using InsightVault.Application.Interfaces;
+using InsightVault.Application.ProcessingQueue;
 using InsightVault.Domain.Entities;
+using InsightVault.Domain.Enums;
 
 namespace InsightVault.Tests.Application;
 
@@ -22,7 +24,12 @@ public class DocumentServiceTests
         var repository = new InMemoryDocumentRepository();
         var blobStorage = new RecordingBlobStorageService();
         var timeProvider = new FixedTimeProvider(new DateTimeOffset(2026, 6, 12, 10, 30, 0, TimeSpan.Zero));
-        var service = new DocumentService(repository, blobStorage, timeProvider, new StubUserLookupService());
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            timeProvider,
+            new StubUserLookupService(),
+            new RecordingOutboxRepository());
         await using var content = new MemoryStream([1, 2, 3]);
         var command = new UploadDocumentCommand("Report.pdf", "application/pdf", 3, content, "user-1");
 
@@ -40,6 +47,74 @@ public class DocumentServiceTests
         Assert.Single(repository.Documents);
         Assert.Equal(1, repository.SaveChangesCallCount);
         Assert.Equal("user-1", repository.Documents.Single().OwnerUserId);
+    }
+
+    [Fact]
+    public async Task UploadAsync_CreatesOnePendingProcessingOutboxEntry()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var outboxRepository = new RecordingOutboxRepository();
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService(),
+            outboxRepository);
+        await using var content = new MemoryStream([1, 2, 3]);
+
+        var result = await service.UploadAsync(
+            new UploadDocumentCommand("report.pdf", "application/pdf", 3, content, "user-1"));
+
+        var entry = Assert.Single(outboxRepository.Entries);
+        Assert.Equal(result.Id, entry.DocumentId);
+        Assert.Equal("user-1", entry.OwnerUserId);
+        Assert.Null(entry.DispatchedAtUtc);
+    }
+
+    [Fact]
+    public async Task RetryProcessingAsync_ForFailedOwnedDocument_ResetsStatusAndCreatesOutboxEntry()
+    {
+        var document = CreateDocument("owner-1");
+        document.MarkProcessingFailed();
+        var repository = new InMemoryDocumentRepository();
+        repository.Documents.Add(document);
+        var outboxRepository = new RecordingOutboxRepository();
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService(),
+            outboxRepository);
+
+        var result = await service.RetryProcessingAsync(
+            new RetryDocumentProcessingCommand(document.Id, "owner-1"));
+
+        Assert.Equal("Uploaded", result.Status);
+        Assert.Equal(DocumentProcessingStatus.Uploaded, document.Status);
+        var entry = Assert.Single(outboxRepository.Entries);
+        Assert.Equal(document.Id, entry.DocumentId);
+        Assert.Equal("owner-1", entry.OwnerUserId);
+    }
+
+    [Fact]
+    public async Task RetryProcessingAsync_ForNonFailedOrNonOwnedDocument_ThrowsInvalidOperationException()
+    {
+        var uploaded = CreateDocument("owner-1");
+        var failed = CreateDocument("owner-2");
+        failed.MarkProcessingFailed();
+        var repository = new InMemoryDocumentRepository();
+        repository.Documents.AddRange([uploaded, failed]);
+        var service = new DocumentService(
+            repository,
+            new RecordingBlobStorageService(),
+            TimeProvider.System,
+            new StubUserLookupService(),
+            new RecordingOutboxRepository());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.RetryProcessingAsync(new RetryDocumentProcessingCommand(uploaded.Id, "owner-1")));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.RetryProcessingAsync(new RetryDocumentProcessingCommand(failed.Id, "owner-1")));
     }
 
     [Theory]
@@ -343,6 +418,38 @@ public class DocumentServiceTests
             SaveChangesCallCount++;
             return Task.CompletedTask;
         }
+    }
+
+    private static Document CreateDocument(string ownerUserId)
+    {
+        return Document.Create(
+            "report.pdf",
+            "application/pdf",
+            100,
+            $"documents/{Guid.NewGuid():N}.pdf",
+            new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
+            ownerUserId);
+    }
+
+    private sealed class RecordingOutboxRepository : IDocumentProcessingOutboxRepository
+    {
+        public List<DocumentProcessingOutboxEntry> Entries { get; } = [];
+
+        public Task AddAsync(DocumentProcessingOutboxEntry entry, CancellationToken cancellationToken = default)
+        {
+            Entries.Add(entry);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<DocumentProcessingOutboxEntry>> ListPendingAsync(
+            int maximumCount,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<DocumentProcessingOutboxEntry>>(
+                Entries.Where(entry => entry.DispatchedAtUtc is null).Take(maximumCount).ToList());
+        }
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class RecordingBlobStorageService : IBlobStorageService
