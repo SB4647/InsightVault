@@ -1,4 +1,5 @@
 using InsightVault.Application.Interfaces;
+using InsightVault.Application.ProcessingQueue;
 using InsightVault.Infrastructure.Chat;
 using InsightVault.Infrastructure.Documents;
 using InsightVault.Infrastructure.Embeddings;
@@ -97,6 +98,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IDocumentProcessingOutboxRepository, DocumentProcessingOutboxRepository>();
         services.AddScoped<IDocumentSearchRepository, DocumentRepository>();
         if (usePostgres)
         {

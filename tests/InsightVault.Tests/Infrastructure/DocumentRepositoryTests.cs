@@ -1,5 +1,6 @@
 using InsightVault.Domain.Entities;
 using InsightVault.Domain.Enums;
+using InsightVault.Application.ProcessingQueue;
 using InsightVault.Infrastructure.Identity;
 using InsightVault.Infrastructure.Persistence;
 using InsightVault.Infrastructure.Persistence.Repositories;
@@ -10,6 +11,37 @@ namespace InsightVault.Tests.Infrastructure;
 
 public sealed class DocumentRepositoryTests
 {
+    [Fact]
+    public async Task OutboxRepository_PersistsAndListsPendingEntriesInCreationOrder()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Users.Add(new ApplicationUser
+        {
+            Id = "user-1", UserName = "user@example.com", NormalizedUserName = "USER@EXAMPLE.COM",
+            Email = "user@example.com", NormalizedEmail = "USER@EXAMPLE.COM", EmailConfirmed = true
+        });
+        var document = Document.Create("sample.pdf", "application/pdf", 256, "documents/sample.pdf",
+            new DateTime(2026, 6, 21, 1, 0, 0, DateTimeKind.Utc), "user-1");
+        context.Documents.Add(document);
+        await context.SaveChangesAsync();
+
+        var repository = new DocumentProcessingOutboxRepository(context);
+        var later = DocumentProcessingOutboxEntry.Create(document.Id, "user-1", new DateTime(2026, 6, 21, 1, 2, 0, DateTimeKind.Utc));
+        var earlier = DocumentProcessingOutboxEntry.Create(document.Id, "user-1", new DateTime(2026, 6, 21, 1, 1, 0, DateTimeKind.Utc));
+        await repository.AddAsync(later);
+        await repository.AddAsync(earlier);
+        await repository.SaveChangesAsync();
+
+        var pending = await repository.ListPendingAsync(10);
+
+        Assert.Equal([earlier.Id, later.Id], pending.Select(entry => entry.Id));
+    }
+
     [Fact]
     public async Task AddPermission_InsertsNewPermissionForTrackedDocument()
     {
