@@ -1,6 +1,7 @@
 using InsightVault.Application.Features.Documents.Commands;
 using InsightVault.Application.Features.Documents.DTOs;
 using InsightVault.Application.Interfaces;
+using InsightVault.Application.ProcessingQueue;
 using InsightVault.Domain.Entities;
 
 namespace InsightVault.Application.Features.Documents;
@@ -9,7 +10,8 @@ public sealed class DocumentService(
     IDocumentRepository documentRepository,
     IBlobStorageService blobStorageService,
     TimeProvider timeProvider,
-    IUserLookupService userLookupService) : IDocumentService
+    IUserLookupService userLookupService,
+    IDocumentProcessingOutboxRepository? documentProcessingOutboxRepository = null) : IDocumentService
 {
     public const long MaxUploadSizeInBytes = 25_000_000;
 
@@ -43,6 +45,12 @@ public sealed class DocumentService(
             command.OwnerUserId);
 
         await documentRepository.AddAsync(document, cancellationToken);
+        await GetOutboxRepository().AddAsync(
+            DocumentProcessingOutboxEntry.Create(
+                document.Id,
+                document.OwnerUserId,
+                timeProvider.GetUtcNow().UtcDateTime),
+            cancellationToken);
         await documentRepository.SaveChangesAsync(cancellationToken);
 
         return MapToDto(document, command.OwnerUserId);
@@ -136,6 +144,38 @@ public sealed class DocumentService(
         await blobStorageService.DeleteAsync(document.BlobName, cancellationToken);
         documentRepository.Remove(document);
         await documentRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Resets a failed document and records a new durable processing request for its owner.
+    /// </summary>
+    public async Task<DocumentDto> RetryProcessingAsync(
+        RetryDocumentProcessingCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await documentRepository.GetByIdAsync(
+                command.DocumentId,
+                command.OwnerUserId,
+                cancellationToken)
+            ?? throw new InvalidOperationException($"Document '{command.DocumentId}' was not found.");
+
+        document.ResetForRetry();
+        await GetOutboxRepository().AddAsync(
+            DocumentProcessingOutboxEntry.Create(
+                document.Id,
+                document.OwnerUserId,
+                timeProvider.GetUtcNow().UtcDateTime),
+            cancellationToken);
+        await documentRepository.SaveChangesAsync(cancellationToken);
+
+        return MapToDto(document, command.OwnerUserId);
+    }
+
+    private IDocumentProcessingOutboxRepository GetOutboxRepository()
+    {
+        return documentProcessingOutboxRepository
+            ?? throw new InvalidOperationException(
+                "Document processing outbox persistence must be configured before uploads or retries are accepted.");
     }
 
     private static DocumentDto MapToDto(Document document, string currentUserId)

@@ -1,4 +1,8 @@
 using InsightVault.Application.Interfaces;
+using InsightVault.Application.ProcessingQueue;
+using Amazon;
+using Amazon.Runtime;
+using Amazon.SQS;
 using InsightVault.Infrastructure.Chat;
 using InsightVault.Infrastructure.Documents;
 using InsightVault.Infrastructure.Embeddings;
@@ -6,6 +10,7 @@ using InsightVault.Infrastructure.Identity;
 using InsightVault.Infrastructure.Persistence;
 using InsightVault.Infrastructure.Persistence.Repositories;
 using InsightVault.Infrastructure.Storage;
+using InsightVault.Infrastructure.ProcessingQueue;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +31,7 @@ public static class DependencyInjection
         var usePostgres = string.Equals(provider, "Postgres", StringComparison.OrdinalIgnoreCase);
         var useS3Storage = string.Equals(storageProvider, "S3", StringComparison.OrdinalIgnoreCase);
         var useAzureStorage = string.Equals(storageProvider, "Azure", StringComparison.OrdinalIgnoreCase);
+        var queueProvider = configuration["Queue:Provider"] ?? "Disabled";
 
         if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
@@ -87,6 +93,8 @@ public static class DependencyInjection
             options.ApiVersion = section["ApiVersion"] ?? "2024-02-01";
         });
 
+        services.Configure<DocumentProcessingQueueOptions>(configuration.GetSection("Queue"));
+
         services.Configure<AzureOpenAiChatOptions>(options =>
         {
             var section = configuration.GetSection("AzureOpenAI");
@@ -97,6 +105,29 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IDocumentProcessingOutboxRepository, DocumentProcessingOutboxRepository>();
+        services.AddScoped<IProcessingOutboxDispatcher, DocumentProcessingOutboxDispatcher>();
+        if (string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(queueProvider, "Sqs", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IAmazonSQS>(provider =>
+            {
+                var queue = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DocumentProcessingQueueOptions>>().Value;
+                var config = new AmazonSQSConfig { RegionEndpoint = RegionEndpoint.GetBySystemName(queue.Region) };
+                if (string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase))
+                {
+                    config.ServiceURL = queue.ServiceUrl;
+                    return new AmazonSQSClient(new BasicAWSCredentials("localstack", "localstack"), config);
+                }
+
+                return new AmazonSQSClient(config);
+            });
+            services.AddScoped<IDocumentProcessingQueue, SqsDocumentProcessingQueue>();
+        }
+        else
+        {
+            services.AddScoped<IDocumentProcessingQueue, DisabledDocumentProcessingQueue>();
+        }
         services.AddScoped<IDocumentSearchRepository, DocumentRepository>();
         if (usePostgres)
         {

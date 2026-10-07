@@ -11,6 +11,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
     public DbSet<Embedding> Embeddings => Set<Embedding>();
     public DbSet<DocumentPermission> DocumentPermissions => Set<DocumentPermission>();
+    public DbSet<DocumentProcessingOutboxEntry> DocumentProcessingOutboxEntries => Set<DocumentProcessingOutboxEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

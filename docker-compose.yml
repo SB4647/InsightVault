@@ -32,6 +32,10 @@ services:
       AzureOpenAI__EmbeddingDeploymentName: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME:-}
       AzureOpenAI__ChatDeploymentName: ${AZURE_OPENAI_CHAT_DEPLOYMENT_NAME:-}
       AzureOpenAI__ApiVersion: ${AZURE_OPENAI_API_VERSION:-2024-10-21}
+      Queue__Provider: ${QUEUE_PROVIDER:-Disabled}
+      Queue__Region: ap-southeast-2
+      Queue__QueueUrl: ${QUEUE_URL:-}
+      Queue__ServiceUrl: ${QUEUE_SERVICE_URL:-}
     ports:
       - "5089:8080"
     depends_on:
@@ -74,6 +78,31 @@ services:
       COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: insightvault-documents
     ports:
       - "9090:9090"
+
+  localstack:
+    profiles: [queue]
+    image: localstack/localstack:4.8
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: ap-southeast-2
+    ports:
+      - "4566:4566"
+
+  worker:
+    profiles: [queue]
+    build:
+      context: .
+      dockerfile: src/InsightVault.Worker/Dockerfile
+    environment:
+      Database__Provider: SqlServer
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=InsightVault;User Id=sa;Password=${INSIGHTVAULT_SQL_PASSWORD:-InsightVault-Local-Only-Password-123!};TrustServerCertificate=True;MultipleActiveResultSets=true
+      Queue__Provider: LocalStack
+      Queue__Region: ap-southeast-2
+      Queue__QueueUrl: ${QUEUE_URL:-}
+      Queue__ServiceUrl: http://localstack:4566
+    depends_on:
+      - sqlserver
+      - localstack
 
 volumes:
   sqlserver-data:

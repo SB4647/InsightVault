@@ -76,7 +76,7 @@ public class DocumentProcessingServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_WhenReprocessingFails_KeepsExistingChunks()
+    public async Task ProcessAsync_WhenProcessingFails_MarksDocumentFailed()
     {
         var document = Document.Create(
             "sample.pdf",
@@ -85,9 +85,6 @@ public class DocumentProcessingServiceTests
             "documents/sample.pdf",
             new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
             "user-1");
-        var existingChunk = DocumentChunk.Create(document.Id, 0, "previous searchable content");
-        existingChunk.SetEmbedding([1.0f, 2.0f, 3.0f]);
-        document.CompleteProcessing([existingChunk]);
         var repository = new InMemoryDocumentRepository(document);
         var service = new DocumentProcessingService(
             repository,
@@ -100,11 +97,41 @@ public class DocumentProcessingServiceTests
             service.ProcessAsync(new ProcessDocumentCommand(document.Id, "user-1")));
 
         Assert.Equal(DocumentProcessingStatus.Failed, document.Status);
-        var retainedChunk = Assert.Single(document.Chunks);
-        Assert.Equal(existingChunk.Id, retainedChunk.Id);
-        Assert.Equal("previous searchable content", retainedChunk.Text);
-        Assert.NotNull(retainedChunk.Embedding);
+        Assert.Empty(document.Chunks);
         Assert.Equal(1, repository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_WhenDocumentIsAlreadyProcessed_DoesNotExtractOrEmbedAgain()
+    {
+        var document = Document.Create(
+            "sample.pdf",
+            "application/pdf",
+            256,
+            "documents/sample.pdf",
+            new DateTime(2026, 6, 12, 10, 30, 0, DateTimeKind.Utc),
+            "user-1");
+        var existingChunk = DocumentChunk.Create(document.Id, 0, "already processed");
+        existingChunk.SetEmbedding([1.0f, 2.0f, 3.0f]);
+        document.CompleteProcessing([existingChunk]);
+        var repository = new InMemoryDocumentRepository(document);
+        var blobStorage = new RecordingBlobStorageService();
+        var extractor = new StubTextExtractionService("should not be extracted");
+        var embeddings = new StubEmbeddingService();
+        var service = new DocumentProcessingService(
+            repository,
+            blobStorage,
+            extractor,
+            new DocumentChunkingService(),
+            embeddings);
+
+        var result = await service.ProcessAsync(new ProcessDocumentCommand(document.Id, "user-1"));
+
+        Assert.Equal(DocumentProcessingStatus.Processed.ToString(), result.Status);
+        Assert.Equal(1, result.ChunkCount);
+        Assert.Null(blobStorage.DownloadedBlobName);
+        Assert.Empty(embeddings.RequestedTexts);
+        Assert.Equal(0, repository.SaveChangesCallCount);
     }
 
     private sealed class InMemoryDocumentRepository(params Document[] documents) : IDocumentRepository

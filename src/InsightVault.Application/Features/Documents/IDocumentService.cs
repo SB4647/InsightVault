@@ -21,4 +21,11 @@ public interface IDocumentService
     Task DeleteDocumentAsync(
         DeleteDocumentCommand command,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Queues a new processing attempt for a failed document owned by the caller.
+    /// </summary>
+    Task<DocumentDto> RetryProcessingAsync(
+        RetryDocumentProcessingCommand command,
+        CancellationToken cancellationToken = default);
 }

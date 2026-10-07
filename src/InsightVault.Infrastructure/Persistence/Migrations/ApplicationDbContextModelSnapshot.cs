@@ -122,6 +122,43 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
                     b.ToTable("DocumentPermissions", (string)null);
                 });
 
+            modelBuilder.Entity("InsightVault.Domain.Entities.DocumentProcessingOutboxEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DispatchAttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DispatchedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LastDispatchAttemptAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId");
+
+                    b.HasIndex("DispatchedAtUtc", "CreatedAtUtc");
+
+                    b.HasIndex("OwnerUserId", "DocumentId");
+
+                    b.ToTable("DocumentProcessingOutboxEntries", (string)null);
+                });
+
             modelBuilder.Entity("InsightVault.Domain.Entities.Embedding", b =>
                 {
                     b.Property<Guid>("Id")
@@ -360,6 +397,17 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("InsightVault.Domain.Entities.DocumentProcessingOutboxEntry", b =>
+                {
+                    b.HasOne("InsightVault.Domain.Entities.Document", "Document")
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Document");
                 });
 
             modelBuilder.Entity("InsightVault.Domain.Entities.Embedding", b =>
