@@ -132,7 +132,10 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext)
                     chunk.Id,
                     chunk.ChunkIndex,
                     chunk.Text,
-                    CosineSimilarity(request.QueryEmbedding, chunk.Embedding!.GetVector()))))
+                    CosineSimilarity(request.QueryEmbedding, chunk.Embedding!.GetVector()),
+                    document.Version,
+                    chunk.SourcePageNumber,
+                    chunk.SectionTitle)))
             .OrderByDescending(match => match.Score)
             .ThenBy(match => match.DocumentName)
             .ThenBy(match => match.ChunkIndex)

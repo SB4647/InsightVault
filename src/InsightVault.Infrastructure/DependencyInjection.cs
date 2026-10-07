@@ -133,10 +133,12 @@ public static class DependencyInjection
         if (usePostgres)
         {
             services.AddScoped<IVectorSearchRepository, PostgresVectorSearchRepository>();
+            services.AddScoped<IFullTextSearchRepository, PostgresFullTextSearchRepository>();
         }
         else
         {
             services.AddScoped<IVectorSearchRepository, DocumentRepository>();
+            services.AddScoped<IFullTextSearchRepository, DocumentFullTextSearchRepository>();
         }
         services.AddScoped<IUserLookupService, UserLookupService>();
         if (useS3Storage)
