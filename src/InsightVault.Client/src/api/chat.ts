@@ -7,6 +7,10 @@ export interface SourceCitationDto {
   chunkIndex: number
   text: string
   score: number
+  documentVersion: number
+  sourcePageNumber: number
+  sectionTitle: string | null
+  rank: number
 }
 
 export interface ChatResponseDto {

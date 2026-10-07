@@ -12,8 +12,8 @@ It is built as a portfolio-grade full-stack project using ASP.NET Core, React, S
 - Local user accounts with JWT authentication
 - Owner-scoped and viewer-scoped document access
 - PDF text extraction, chunking, embedding generation, and vector persistence
-- Semantic search with cosine similarity ranking
-- RAG chat with grounded answers and source citations
+- Hybrid full-text plus vector retrieval with bounded, configurable quality controls
+- RAG chat with grounded answers, page-aware source citations, and stored provenance
 - Clean Architecture project structure
 - Azure Blob Storage by default, with an S3-compatible document-storage adapter
 - Docker Compose local environment for API, SQL Server, PostgreSQL, and opt-in S3Mock
@@ -72,15 +72,16 @@ Grounded answer generated from retrieved document chunks, with cited sources sho
 - Split extracted text into overlapping chunks
 - Generate embeddings through Azure OpenAI
 - Persist chunks and embedding vectors in SQL Server
-- Search processed document chunks semantically
-- Rank search results by cosine similarity
+- Search processed document chunks with full-text and vector candidates
+- Fuse candidates with reciprocal-rank fusion, a server-owned Top-K, and a similarity threshold
 
 ### RAG Chat
 
 - Ask natural-language questions against processed documents
 - Retrieve relevant chunks using semantic search
 - Generate grounded answers through Azure OpenAI chat completions
-- Return source citations for the chunks used in the answer
+- Return source citations with document version, page, section, and final rank
+- Persist successful answer-to-chunk provenance for audit; no answer-history screen is exposed yet
 
 ### Security And Access Control
 
@@ -281,7 +282,7 @@ Upload validation is enforced server-side:
 ### Semantic Search
 
 ```http
-GET /api/search?query={query}&maxResults=10
+GET /api/search?query={query}
 ```
 
 Returns ranked chunks:
@@ -290,6 +291,10 @@ Returns ranked chunks:
 - `documentName`
 - `chunkId`
 - `chunkIndex`
+- `documentVersion`
+- `sourcePageNumber`
+- `sectionTitle`
+- `rank`
 - `text`
 - `score`
 
@@ -304,8 +309,7 @@ Request:
 
 ```json
 {
-  "question": "What are the most important points in these documents?",
-  "maxSources": 5
+  "question": "What are the most important points in these documents?"
 }
 ```
 
@@ -329,6 +333,12 @@ Returns:
   },
   "Storage": {
     "Provider": "Azure"
+  },
+  "Retrieval": {
+    "TopK": 5,
+    "CandidateMultiplier": 4,
+    "MinimumSimilarity": 0.60,
+    "FullTextOnlyScore": 0.60
   },
   "AzureOpenAI": {
     "Endpoint": "",
@@ -610,7 +620,17 @@ The test suite focuses on Domain and Application behavior:
 - document processing
 - semantic search ranking
 - RAG chat orchestration
+- hybrid retrieval ranking, permission filtering, and evaluation thresholds
+- answer-to-chunk provenance persistence
 - failed reprocessing keeps existing chunks
+
+Run the deterministic retrieval-quality evaluation locally; it uses checked-in JSON and no cloud services:
+
+```powershell
+dotnet test tests/InsightVault.Tests/InsightVault.Tests.csproj --filter "FullyQualifiedName~RetrievalEvaluationTests"
+```
+
+The current gate requires average recall@5 of at least `0.80` and precision@5 of at least `0.60`.
 
 ### Security And Reliability Hardening
 

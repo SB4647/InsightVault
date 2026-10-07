@@ -22,7 +22,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         try
         {
             var response = await chatService.AskAsync(
-                new AskQuestionQuery(request.Question, User.GetRequiredUserId(), request.MaxSources ?? 5),
+                new AskQuestionQuery(request.Question, User.GetRequiredUserId()),
                 cancellationToken);
 
             return Ok(response);
@@ -33,7 +33,5 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         }
     }
 
-    public sealed record ChatRequest(
-        string Question,
-        int? MaxSources);
+    public sealed record ChatRequest(string Question);
 }
