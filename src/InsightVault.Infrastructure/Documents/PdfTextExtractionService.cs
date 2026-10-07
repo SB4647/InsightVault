@@ -1,4 +1,3 @@
-using System.Text;
 using InsightVault.Application.Interfaces;
 using UglyToad.PdfPig;
 
@@ -6,17 +5,22 @@ namespace InsightVault.Infrastructure.Documents;
 
 public sealed class PdfTextExtractionService : ITextExtractionService
 {
-    public Task<string> ExtractTextAsync(Stream document, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Extracts text separately for every PDF page so downstream citations can identify their source page.
+    /// </summary>
+    public Task<IReadOnlyList<ExtractedDocumentPage>> ExtractPagesAsync(
+        Stream document,
+        CancellationToken cancellationToken = default)
     {
         using var pdf = PdfDocument.Open(document);
-        var text = new StringBuilder();
+        var pages = new List<ExtractedDocumentPage>();
 
         foreach (var page in pdf.GetPages())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            text.AppendLine(page.Text);
+            pages.Add(new ExtractedDocumentPage(page.Number, null, page.Text));
         }
 
-        return Task.FromResult(text.ToString());
+        return Task.FromResult<IReadOnlyList<ExtractedDocumentPage>>(pages);
     }
 }

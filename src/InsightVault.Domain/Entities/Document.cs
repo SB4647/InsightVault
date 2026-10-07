@@ -26,6 +26,7 @@ public class Document
         BlobName = blobName;
         UploadedAtUtc = uploadedAtUtc;
         OwnerUserId = ownerUserId;
+        Version = 1;
         Status = DocumentProcessingStatus.Uploaded;
     }
 
@@ -36,6 +37,7 @@ public class Document
     public string BlobName { get; private set; } = string.Empty;
     public DateTime UploadedAtUtc { get; private set; }
     public string OwnerUserId { get; private set; } = string.Empty;
+    public int Version { get; private set; }
     public DocumentProcessingStatus Status { get; private set; }
     public IReadOnlyCollection<DocumentChunk> Chunks => _chunks.AsReadOnly();
     public IReadOnlyCollection<DocumentPermission> Permissions => _permissions.AsReadOnly();

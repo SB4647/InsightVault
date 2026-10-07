@@ -32,6 +32,7 @@ public class DocumentProcessingServiceTests
         Assert.True(result.ChunkCount > 1);
         Assert.Equal(DocumentProcessingStatus.Processed, document.Status);
         Assert.Equal(result.ChunkCount, document.Chunks.Count);
+        Assert.All(document.Chunks, chunk => Assert.Equal(1, chunk.SourcePageNumber));
         Assert.All(document.Chunks, chunk => Assert.NotNull(chunk.Embedding));
         Assert.Equal(result.ChunkCount, embeddings.RequestedTexts.Count);
         Assert.Equal("documents/sample.pdf", blobStorage.DownloadedBlobName);
@@ -216,9 +217,11 @@ public class DocumentProcessingServiceTests
 
     private sealed class StubTextExtractionService(string text) : ITextExtractionService
     {
-        public Task<string> ExtractTextAsync(Stream document, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<ExtractedDocumentPage>> ExtractPagesAsync(
+            Stream document,
+            CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(text);
+            return Task.FromResult<IReadOnlyList<ExtractedDocumentPage>>([new(1, null, text)]);
         }
     }
 
