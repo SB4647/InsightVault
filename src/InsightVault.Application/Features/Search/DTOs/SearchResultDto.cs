@@ -6,4 +6,8 @@ public sealed record SearchResultDto(
     Guid ChunkId,
     int ChunkIndex,
     string Text,
-    double Score);
+    double Score,
+    int DocumentVersion = 1,
+    int SourcePageNumber = 1,
+    string? SectionTitle = null,
+    int Rank = 0);
