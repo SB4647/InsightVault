@@ -105,6 +105,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IChatAnswerRepository, ChatAnswerRepository>();
         services.AddScoped<IDocumentProcessingOutboxRepository, DocumentProcessingOutboxRepository>();
         services.AddScoped<IProcessingOutboxDispatcher, DocumentProcessingOutboxDispatcher>();
         if (string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase) ||

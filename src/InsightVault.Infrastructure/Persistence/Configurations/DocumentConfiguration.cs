@@ -34,6 +34,10 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .HasMaxLength(450)
             .IsRequired();
 
+        builder.Property(document => document.Version)
+            .HasDefaultValue(1)
+            .IsRequired();
+
         builder.Property(document => document.Status)
             .HasConversion<string>()
             .HasMaxLength(50)

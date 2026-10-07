@@ -24,6 +24,90 @@ namespace InsightVault.Infrastructure.Persistence.PostgresMigrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("MinimumSimilarity")
+                        .HasPrecision(4, 3)
+                        .HasColumnType("numeric(4,3)");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("RetrievalStrategyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TopK")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "CreatedAtUtc");
+
+                    b.ToTable("ChatAnswers", (string)null);
+                });
+
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswerCitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChatAnswerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentChunkId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DocumentVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<string>("SectionTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("SourcePageNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentChunkId");
+
+                    b.HasIndex("DocumentId");
+
+                    b.HasIndex("ChatAnswerId", "Rank")
+                        .IsUnique();
+
+                    b.ToTable("ChatAnswerCitations", (string)null);
+                });
+
             modelBuilder.Entity("InsightVault.Domain.Entities.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -61,6 +145,11 @@ namespace InsightVault.Infrastructure.Persistence.PostgresMigrations
                     b.Property<DateTime>("UploadedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerUserId");
@@ -79,6 +168,15 @@ namespace InsightVault.Infrastructure.Persistence.PostgresMigrations
 
                     b.Property<Guid>("DocumentId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("SectionTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("SourcePageNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("Text")
                         .IsRequired()
@@ -384,6 +482,27 @@ namespace InsightVault.Infrastructure.Persistence.PostgresMigrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswerCitation", b =>
+                {
+                    b.HasOne("InsightVault.Domain.Entities.ChatAnswer", null)
+                        .WithMany("Citations")
+                        .HasForeignKey("ChatAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InsightVault.Domain.Entities.DocumentChunk", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentChunkId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InsightVault.Domain.Entities.Document", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("InsightVault.Domain.Entities.DocumentChunk", b =>
                 {
                     b.HasOne("InsightVault.Domain.Entities.Document", null)
@@ -471,6 +590,11 @@ namespace InsightVault.Infrastructure.Persistence.PostgresMigrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswer", b =>
+                {
+                    b.Navigation("Citations");
                 });
 
             modelBuilder.Entity("InsightVault.Domain.Entities.Document", b =>
