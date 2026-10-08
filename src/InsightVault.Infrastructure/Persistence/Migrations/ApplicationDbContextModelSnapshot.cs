@@ -486,18 +486,6 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ChatAnswerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("InsightVault.Domain.Entities.DocumentChunk", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentChunkId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("InsightVault.Domain.Entities.Document", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("InsightVault.Domain.Entities.DocumentChunk", b =>

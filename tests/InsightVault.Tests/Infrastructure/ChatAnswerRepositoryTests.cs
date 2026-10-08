@@ -16,6 +16,7 @@ public sealed class ChatAnswerRepositoryTests
         var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
 
         Guid answerId;
+        Guid documentId;
         await using (var context = new ApplicationDbContext(options))
         {
             await context.Database.EnsureCreatedAsync();
@@ -31,6 +32,7 @@ public sealed class ChatAnswerRepositoryTests
             document.CompleteProcessing([firstChunk, secondChunk]);
             context.Documents.Add(document);
             await context.SaveChangesAsync();
+            documentId = document.Id;
 
             var answer = ChatAnswer.Create(
                 "user-1",
@@ -79,6 +81,12 @@ public sealed class ChatAnswerRepositoryTests
             var secondCitation = saved.Citations.Single(citation => citation.Rank == 2);
             Assert.Equal(4, secondCitation.SourcePageNumber);
             Assert.Equal("Review process", secondCitation.SectionTitle);
+
+            var sourceDocument = await context.Documents.SingleAsync(document => document.Id == documentId);
+            context.Documents.Remove(sourceDocument);
+            await context.SaveChangesAsync();
+
+            Assert.Equal(2, await context.ChatAnswerCitations.CountAsync());
 
             context.ChatAnswers.Remove(saved);
             await context.SaveChangesAsync();

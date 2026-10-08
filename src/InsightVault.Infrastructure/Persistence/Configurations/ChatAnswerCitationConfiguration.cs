@@ -22,13 +22,5 @@ public sealed class ChatAnswerCitationConfiguration : IEntityTypeConfiguration<C
             .WithMany(answer => answer.Citations)
             .HasForeignKey(citation => citation.ChatAnswerId)
             .OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Document>()
-            .WithMany()
-            .HasForeignKey(citation => citation.DocumentId)
-            .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<DocumentChunk>()
-            .WithMany()
-            .HasForeignKey(citation => citation.DocumentChunkId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

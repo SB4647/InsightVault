@@ -29,7 +29,7 @@ public sealed class SemanticSearchService(
         var maximumCandidates = retrievalOptions.TopK * retrievalOptions.CandidateMultiplier;
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query.Query, cancellationToken);
         var vectorTask = vectorSearchRepository.SearchAsync(
-            new VectorSearchRequest(query.OwnerUserId, queryEmbedding, maximumCandidates),
+            new VectorSearchRequest(query.OwnerUserId, queryEmbedding, maximumCandidates, query.Query),
             cancellationToken);
         var fullTextTask = fullTextSearchRepository.SearchAsync(
             new FullTextSearchRequest(query.OwnerUserId, query.Query, maximumCandidates),

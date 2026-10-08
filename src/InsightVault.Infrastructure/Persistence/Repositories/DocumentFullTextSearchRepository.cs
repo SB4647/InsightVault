@@ -36,7 +36,7 @@ public sealed class DocumentFullTextSearchRepository(ApplicationDbContext dbCont
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var chunks = await (
+        var candidateQuery =
             from document in dbContext.Documents.AsNoTracking()
             join chunk in dbContext.DocumentChunks.AsNoTracking() on document.Id equals chunk.DocumentId
             where document.Status == DocumentProcessingStatus.Processed
@@ -54,7 +54,19 @@ public sealed class DocumentFullTextSearchRepository(ApplicationDbContext dbCont
                 chunk.SourcePageNumber,
                 chunk.SectionTitle,
                 chunk.Text
-            })
+            };
+
+        foreach (var term in terms)
+        {
+            var normalizedTerm = term.ToLowerInvariant();
+            candidateQuery = candidateQuery.Where(candidate =>
+                candidate.Text.ToLower().Contains(normalizedTerm));
+        }
+
+        var chunks = await candidateQuery
+            .OrderBy(candidate => candidate.OriginalFileName)
+            .ThenBy(candidate => candidate.ChunkIndex)
+            .Take(request.MaxResults)
             .ToListAsync(cancellationToken);
 
         return chunks
