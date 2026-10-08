@@ -17,13 +17,12 @@ public sealed class SearchController(ISemanticSearchService semanticSearchServic
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IReadOnlyList<SearchResultDto>>> Search(
         [FromQuery] string query,
-        [FromQuery] int maxResults = 10,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var results = await semanticSearchService.SearchAsync(
-                new SearchDocumentsQuery(query, User.GetRequiredUserId(), maxResults),
+                new SearchDocumentsQuery(query, User.GetRequiredUserId()),
                 cancellationToken);
 
             return Ok(results);

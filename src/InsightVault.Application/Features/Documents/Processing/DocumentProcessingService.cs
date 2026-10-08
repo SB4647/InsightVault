@@ -36,8 +36,8 @@ public sealed class DocumentProcessingService(
         try
         {
             await using var fileStream = await blobStorageService.DownloadAsync(document.BlobName, cancellationToken);
-            var extractedText = await textExtractionService.ExtractTextAsync(fileStream, cancellationToken);
-            var textChunks = chunkingService.Chunk(extractedText, command.ChunkSize, command.OverlapSize);
+            var extractedPages = await textExtractionService.ExtractPagesAsync(fileStream, cancellationToken);
+            var textChunks = chunkingService.Chunk(extractedPages, command.ChunkSize, command.OverlapSize);
 
             if (textChunks.Count == 0)
             {
@@ -47,7 +47,12 @@ public sealed class DocumentProcessingService(
             var chunks = new List<DocumentChunk>();
             foreach (var textChunk in textChunks)
             {
-                var chunk = DocumentChunk.Create(document.Id, textChunk.ChunkIndex, textChunk.Text);
+                var chunk = DocumentChunk.Create(
+                    document.Id,
+                    textChunk.ChunkIndex,
+                    textChunk.Text,
+                    textChunk.SourcePageNumber,
+                    textChunk.SectionTitle);
                 var vector = await embeddingService.GenerateEmbeddingAsync(textChunk.Text, cancellationToken);
                 chunk.SetEmbedding(vector);
                 chunks.Add(chunk);

@@ -121,18 +121,33 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext)
         CancellationToken cancellationToken = default)
     {
         // SQL Server fallback while PostgreSQL + pgvector becomes the primary production path.
-        var documents = await ListProcessedDocumentsAsync(request.OwnerUserId, cancellationToken);
+        // Bound the database candidate scan before calculating cosine similarity in memory.
+        var candidates = await (
+            from document in dbContext.Documents.AsNoTracking()
+            join chunk in dbContext.DocumentChunks.AsNoTracking() on document.Id equals chunk.DocumentId
+            join embedding in dbContext.Embeddings.AsNoTracking() on chunk.Id equals embedding.DocumentChunkId
+            where document.Status == DocumentProcessingStatus.Processed
+                  && (document.OwnerUserId == request.OwnerUserId
+                      || dbContext.DocumentPermissions.Any(permission =>
+                          permission.DocumentId == document.Id
+                          && permission.UserId == request.OwnerUserId))
+            select new { document, chunk, embedding })
+            .OrderBy(candidate => candidate.document.OriginalFileName)
+            .ThenBy(candidate => candidate.chunk.ChunkIndex)
+            .Take(request.MaxResults)
+            .ToListAsync(cancellationToken);
 
-        return documents
-            .SelectMany(document => document.Chunks
-                .Where(chunk => chunk.Embedding is not null)
-                .Select(chunk => new VectorSearchMatch(
-                    document.Id,
-                    document.OriginalFileName,
-                    chunk.Id,
-                    chunk.ChunkIndex,
-                    chunk.Text,
-                    CosineSimilarity(request.QueryEmbedding, chunk.Embedding!.GetVector()))))
+        return candidates
+            .Select(candidate => new VectorSearchMatch(
+                candidate.document.Id,
+                candidate.document.OriginalFileName,
+                candidate.chunk.Id,
+                candidate.chunk.ChunkIndex,
+                candidate.chunk.Text,
+                CosineSimilarity(request.QueryEmbedding, candidate.embedding.GetVector()),
+                candidate.document.Version,
+                candidate.chunk.SourcePageNumber,
+                candidate.chunk.SectionTitle))
             .OrderByDescending(match => match.Score)
             .ThenBy(match => match.DocumentName)
             .ThenBy(match => match.ChunkIndex)

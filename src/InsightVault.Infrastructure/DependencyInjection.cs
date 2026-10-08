@@ -105,6 +105,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IChatAnswerRepository, ChatAnswerRepository>();
         services.AddScoped<IDocumentProcessingOutboxRepository, DocumentProcessingOutboxRepository>();
         services.AddScoped<IProcessingOutboxDispatcher, DocumentProcessingOutboxDispatcher>();
         if (string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase) ||
@@ -132,10 +133,12 @@ public static class DependencyInjection
         if (usePostgres)
         {
             services.AddScoped<IVectorSearchRepository, PostgresVectorSearchRepository>();
+            services.AddScoped<IFullTextSearchRepository, PostgresFullTextSearchRepository>();
         }
         else
         {
             services.AddScoped<IVectorSearchRepository, DocumentRepository>();
+            services.AddScoped<IFullTextSearchRepository, DocumentFullTextSearchRepository>();
         }
         services.AddScoped<IUserLookupService, UserLookupService>();
         if (useS3Storage)

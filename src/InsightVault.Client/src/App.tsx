@@ -417,13 +417,16 @@ function App() {
             {chatResponse.sources.length > 0 && (
               <div className="source-list">
                 <h3>Sources</h3>
-                {chatResponse.sources.map((source, index) => (
+                {chatResponse.sources.map((source) => (
                   <article className="source-item" key={source.chunkId}>
                     <div>
                       <strong>
-                        [{index + 1}] {source.documentName}
+                        [{source.rank}] {source.documentName}
                       </strong>
-                      <span>Chunk {source.chunkIndex}</span>
+                      <span>
+                        Version {source.documentVersion} · Page {source.sourcePageNumber} · Chunk {source.chunkIndex}
+                        {source.sectionTitle ? ` · ${source.sectionTitle}` : ''}
+                      </span>
                     </div>
                     <p>{source.text}</p>
                   </article>

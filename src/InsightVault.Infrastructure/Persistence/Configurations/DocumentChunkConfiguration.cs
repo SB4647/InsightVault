@@ -18,6 +18,13 @@ public sealed class DocumentChunkConfiguration : IEntityTypeConfiguration<Docume
         builder.Property(chunk => chunk.Text)
             .IsRequired();
 
+        builder.Property(chunk => chunk.SourcePageNumber)
+            .HasDefaultValue(1)
+            .IsRequired();
+
+        builder.Property(chunk => chunk.SectionTitle)
+            .HasMaxLength(500);
+
         builder.HasOne<Document>()
             .WithMany(document => document.Chunks)
             .HasForeignKey(chunk => chunk.DocumentId)

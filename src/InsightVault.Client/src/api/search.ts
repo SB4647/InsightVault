@@ -7,6 +7,10 @@ export interface SearchResultDto {
   chunkIndex: number
   text: string
   score: number
+  documentVersion: number
+  sourcePageNumber: number
+  sectionTitle: string | null
+  rank: number
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7227'

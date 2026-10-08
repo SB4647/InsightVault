@@ -22,6 +22,90 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("MinimumSimilarity")
+                        .HasPrecision(4, 3)
+                        .HasColumnType("decimal(4,3)");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("RetrievalStrategyVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TopK")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "CreatedAtUtc");
+
+                    b.ToTable("ChatAnswers", (string)null);
+                });
+
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswerCitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChatAnswerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DocumentChunkId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DocumentVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<string>("SectionTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("SourcePageNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentChunkId");
+
+                    b.HasIndex("DocumentId");
+
+                    b.HasIndex("ChatAnswerId", "Rank")
+                        .IsUnique();
+
+                    b.ToTable("ChatAnswerCitations", (string)null);
+                });
+
             modelBuilder.Entity("InsightVault.Domain.Entities.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -59,6 +143,11 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("UploadedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerUserId");
@@ -77,6 +166,15 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("DocumentId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SectionTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("SourcePageNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("Text")
                         .IsRequired()
@@ -381,6 +479,15 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswerCitation", b =>
+                {
+                    b.HasOne("InsightVault.Domain.Entities.ChatAnswer", null)
+                        .WithMany("Citations")
+                        .HasForeignKey("ChatAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("InsightVault.Domain.Entities.DocumentChunk", b =>
                 {
                     b.HasOne("InsightVault.Domain.Entities.Document", null)
@@ -468,6 +575,11 @@ namespace InsightVault.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("InsightVault.Domain.Entities.ChatAnswer", b =>
+                {
+                    b.Navigation("Citations");
                 });
 
             modelBuilder.Entity("InsightVault.Domain.Entities.Document", b =>

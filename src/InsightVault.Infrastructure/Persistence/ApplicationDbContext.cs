@@ -12,6 +12,8 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<Embedding> Embeddings => Set<Embedding>();
     public DbSet<DocumentPermission> DocumentPermissions => Set<DocumentPermission>();
     public DbSet<DocumentProcessingOutboxEntry> DocumentProcessingOutboxEntries => Set<DocumentProcessingOutboxEntry>();
+    public DbSet<ChatAnswer> ChatAnswers => Set<ChatAnswer>();
+    public DbSet<ChatAnswerCitation> ChatAnswerCitations => Set<ChatAnswerCitation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

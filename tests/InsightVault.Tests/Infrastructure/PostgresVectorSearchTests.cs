@@ -58,6 +58,40 @@ public sealed class PostgresVectorSearchTests
         Assert.Contains("1536", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task FullTextSearchAsync_ReturnsOnlyAuthorisedProcessedChunks()
+    {
+        await using var database = CreateDatabase();
+        await database.StartAsync();
+        var options = CreateOptions(database.GetConnectionString());
+
+        await using (var setupContext = new PostgresApplicationDbContext(options))
+        {
+            await setupContext.Database.MigrateAsync();
+            await SeedDocumentsAsync(setupContext);
+            var sharedTextDocument = CreateDocument(
+                "shared-text.pdf",
+                "other-1",
+                CreateVector(1f, 0f),
+                "shared retrieval policy");
+            setupContext.Documents.Add(sharedTextDocument);
+            setupContext.DocumentPermissions.Add(sharedTextDocument.ShareWithViewer("viewer-1").Permission);
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var searchContext = new PostgresApplicationDbContext(options);
+        var repository = new PostgresFullTextSearchRepository(searchContext);
+
+        var viewerResults = await repository.SearchAsync(new FullTextSearchRequest("viewer-1", "shared", 10));
+        var unrelatedResults = await repository.SearchAsync(new FullTextSearchRequest("unrelated-1", "shared", 10));
+
+        var viewerResult = Assert.Single(viewerResults);
+        Assert.Equal("shared-text.pdf", viewerResult.DocumentName);
+        Assert.Equal(1, viewerResult.DocumentVersion);
+        Assert.Equal(1, viewerResult.SourcePageNumber);
+        Assert.Empty(unrelatedResults);
+    }
+
     private static PostgreSqlContainer CreateDatabase()
     {
         return new PostgreSqlBuilder("pgvector/pgvector:0.8.0-pg17")
@@ -116,7 +150,11 @@ public sealed class PostgresVectorSearchTests
         };
     }
 
-    private static Document CreateDocument(string name, string ownerUserId, IReadOnlyList<float> vector)
+    private static Document CreateDocument(
+        string name,
+        string ownerUserId,
+        IReadOnlyList<float> vector,
+        string? chunkText = null)
     {
         var document = Document.Create(
             name,
@@ -125,7 +163,7 @@ public sealed class PostgresVectorSearchTests
             $"documents/{name}",
             DateTime.UtcNow,
             ownerUserId);
-        var chunk = DocumentChunk.Create(document.Id, 0, name);
+        var chunk = DocumentChunk.Create(document.Id, 0, chunkText ?? name);
         chunk.SetEmbedding(vector);
         document.CompleteProcessing([chunk]);
 

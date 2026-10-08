@@ -42,32 +42,23 @@ public class SemanticSearchServiceTests
         secondChunk.SetEmbedding([0.0f, 1.0f]);
         secondDocument.CompleteProcessing([secondChunk]);
 
-        var service = new SemanticSearchService(
+        var service = CreateService(
             new StubEmbeddingService([1.0f, 0.0f]),
             new InMemoryVectorSearchRepository([firstDocument, secondDocument]));
 
         var results = await service.SearchAsync(new SearchDocumentsQuery("alpha", "user-1"));
 
-        Assert.Collection(
-            results,
-            first =>
-            {
-                Assert.Equal(firstDocument.Id, first.DocumentId);
-                Assert.Equal("first.pdf", first.DocumentName);
-                Assert.Equal("alpha content", first.Text);
-                Assert.Equal(1.0, first.Score, precision: 5);
-            },
-            second =>
-            {
-                Assert.Equal(secondDocument.Id, second.DocumentId);
-                Assert.Equal(0.0, second.Score, precision: 5);
-            });
+        var first = Assert.Single(results);
+        Assert.Equal(firstDocument.Id, first.DocumentId);
+        Assert.Equal("first.pdf", first.DocumentName);
+        Assert.Equal("alpha content", first.Text);
+        Assert.Equal(1.0, first.Score, precision: 5);
     }
 
     [Fact]
     public async Task SearchAsync_WithBlankQuery_ThrowsArgumentException()
     {
-        var service = new SemanticSearchService(
+        var service = CreateService(
             new StubEmbeddingService([1.0f]),
             new InMemoryVectorSearchRepository([]));
 
@@ -86,7 +77,7 @@ public class SemanticSearchServiceTests
             new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc),
             "user-1");
 
-        var service = new SemanticSearchService(
+        var service = CreateService(
             new StubEmbeddingService([1.0f]),
             new InMemoryVectorSearchRepository([document]));
 
@@ -121,7 +112,7 @@ public class SemanticSearchServiceTests
         otherDocument.CompleteProcessing([otherChunk]);
         otherDocument.ShareWithViewer("user-1");
 
-        var service = new SemanticSearchService(
+        var service = CreateService(
             new StubEmbeddingService([1.0f]),
             new InMemoryVectorSearchRepository([ownedDocument, otherDocument]));
 
@@ -140,6 +131,29 @@ public class SemanticSearchServiceTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(vector);
+        }
+    }
+
+    private static SemanticSearchService CreateService(
+        IEmbeddingService embeddingService,
+        IVectorSearchRepository vectorSearchRepository)
+    {
+        var options = new RetrievalOptions();
+        return new SemanticSearchService(
+            embeddingService,
+            vectorSearchRepository,
+            new EmptyFullTextSearchRepository(),
+            new HybridRetrievalService(options),
+            options);
+    }
+
+    private sealed class EmptyFullTextSearchRepository : IFullTextSearchRepository
+    {
+        public Task<IReadOnlyList<FullTextSearchMatch>> SearchAsync(
+            FullTextSearchRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<FullTextSearchMatch>>([]);
         }
     }
 

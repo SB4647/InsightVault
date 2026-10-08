@@ -1,4 +1,5 @@
 using InsightVault.Application.Features.Documents.Processing;
+using InsightVault.Application.Interfaces;
 
 namespace InsightVault.Tests.Application;
 
@@ -38,5 +39,31 @@ public class DocumentChunkingServiceTests
         var service = new DocumentChunkingService();
 
         Assert.Throws<ArgumentException>(() => service.Chunk("content", chunkSize, overlapSize));
+    }
+
+    [Fact]
+    public void Chunk_WithSourcePages_PreservesPageAndSectionMetadata()
+    {
+        var service = new DocumentChunkingService();
+        var pages = new[]
+        {
+            new ExtractedDocumentPage(3, "Executive summary", "The first source page."),
+            new ExtractedDocumentPage(4, null, "The second source page.")
+        };
+
+        var chunks = service.Chunk(pages, chunkSize: 100, overlapSize: 10);
+
+        Assert.Collection(
+            chunks,
+            first =>
+            {
+                Assert.Equal(3, first.SourcePageNumber);
+                Assert.Equal("Executive summary", first.SectionTitle);
+            },
+            second =>
+            {
+                Assert.Equal(4, second.SourcePageNumber);
+                Assert.Null(second.SectionTitle);
+            });
     }
 }

@@ -6,7 +6,10 @@ namespace InsightVault.Application.Features.Search;
 
 public sealed class SemanticSearchService(
     IEmbeddingService embeddingService,
-    IVectorSearchRepository vectorSearchRepository) : ISemanticSearchService
+    IVectorSearchRepository vectorSearchRepository,
+    IFullTextSearchRepository fullTextSearchRepository,
+    HybridRetrievalService hybridRetrievalService,
+    RetrievalOptions retrievalOptions) : ISemanticSearchService
 {
     public async Task<IReadOnlyList<SearchResultDto>> SearchAsync(
         SearchDocumentsQuery query,
@@ -22,24 +25,29 @@ public sealed class SemanticSearchService(
             throw new ArgumentException("Owner user id is required.", nameof(query));
         }
 
-        if (query.MaxResults <= 0)
-        {
-            throw new ArgumentException("Max results must be greater than zero.", nameof(query));
-        }
-
+        retrievalOptions.Validate();
+        var maximumCandidates = retrievalOptions.TopK * retrievalOptions.CandidateMultiplier;
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query.Query, cancellationToken);
-        var matches = await vectorSearchRepository.SearchAsync(
-            new VectorSearchRequest(query.OwnerUserId, queryEmbedding, query.MaxResults),
+        var vectorTask = vectorSearchRepository.SearchAsync(
+            new VectorSearchRequest(query.OwnerUserId, queryEmbedding, maximumCandidates, query.Query),
             cancellationToken);
+        var fullTextTask = fullTextSearchRepository.SearchAsync(
+            new FullTextSearchRequest(query.OwnerUserId, query.Query, maximumCandidates),
+            cancellationToken);
+        await Task.WhenAll(vectorTask, fullTextTask);
 
-        return matches
+        return hybridRetrievalService.Rank(vectorTask.Result, fullTextTask.Result)
             .Select(match => new SearchResultDto(
                 match.DocumentId,
                 match.DocumentName,
                 match.ChunkId,
                 match.ChunkIndex,
                 match.Text,
-                match.Score))
+                match.Score,
+                match.DocumentVersion,
+                match.SourcePageNumber,
+                match.SectionTitle,
+                match.Rank))
             .ToList();
     }
 }

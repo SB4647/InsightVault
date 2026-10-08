@@ -13,7 +13,8 @@ public interface IVectorSearchRepository
 public sealed record VectorSearchRequest(
     string OwnerUserId,
     IReadOnlyList<float> QueryEmbedding,
-    int MaxResults);
+    int MaxResults,
+    string Query = "");
 
 public sealed record VectorSearchMatch(
     Guid DocumentId,
@@ -21,4 +22,7 @@ public sealed record VectorSearchMatch(
     Guid ChunkId,
     int ChunkIndex,
     string Text,
-    double Score);
+    double Score,
+    int DocumentVersion = 1,
+    int SourcePageNumber = 1,
+    string? SectionTitle = null);

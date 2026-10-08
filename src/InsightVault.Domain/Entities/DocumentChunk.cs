@@ -6,21 +6,30 @@ public class DocumentChunk
     {
     }
 
-    private DocumentChunk(Guid documentId, int chunkIndex, string text)
+    private DocumentChunk(Guid documentId, int chunkIndex, string text, int sourcePageNumber, string? sectionTitle)
     {
         Id = Guid.NewGuid();
         DocumentId = documentId;
         ChunkIndex = chunkIndex;
         Text = text;
+        SourcePageNumber = sourcePageNumber;
+        SectionTitle = sectionTitle;
     }
 
     public Guid Id { get; private set; }
     public Guid DocumentId { get; private set; }
     public int ChunkIndex { get; private set; }
     public string Text { get; private set; } = string.Empty;
+    public int SourcePageNumber { get; private set; }
+    public string? SectionTitle { get; private set; }
     public Embedding? Embedding { get; private set; }
 
-    public static DocumentChunk Create(Guid documentId, int chunkIndex, string text)
+    public static DocumentChunk Create(
+        Guid documentId,
+        int chunkIndex,
+        string text,
+        int sourcePageNumber = 1,
+        string? sectionTitle = null)
     {
         if (documentId == Guid.Empty)
         {
@@ -37,7 +46,17 @@ public class DocumentChunk
             throw new ArgumentException("Chunk text is required.", nameof(text));
         }
 
-        return new DocumentChunk(documentId, chunkIndex, text.Trim());
+        if (sourcePageNumber <= 0)
+        {
+            throw new ArgumentException("Source page number must be positive.", nameof(sourcePageNumber));
+        }
+
+        return new DocumentChunk(
+            documentId,
+            chunkIndex,
+            text.Trim(),
+            sourcePageNumber,
+            string.IsNullOrWhiteSpace(sectionTitle) ? null : sectionTitle.Trim());
     }
 
     public void SetEmbedding(IReadOnlyList<float> vector)

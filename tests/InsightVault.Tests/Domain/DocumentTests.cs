@@ -24,6 +24,7 @@ public class DocumentTests
         Assert.Equal("documents/requirements.pdf", document.BlobName);
         Assert.Equal(uploadedAt, document.UploadedAtUtc);
         Assert.Equal("user-1", document.OwnerUserId);
+        Assert.Equal(1, document.Version);
         Assert.Equal(DocumentProcessingStatus.Uploaded, document.Status);
     }
 

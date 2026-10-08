@@ -41,8 +41,11 @@ public sealed class PostgresVectorSearchRepository(
             {
                 document.Id,
                 document.OriginalFileName,
+                document.Version,
                 ChunkId = chunk.Id,
                 chunk.ChunkIndex,
+                chunk.SourcePageNumber,
+                chunk.SectionTitle,
                 chunk.Text,
                 Distance = EF.Property<Vector>(embedding, PostgresApplicationDbContext.VectorPropertyName)
                     .CosineDistance(queryVector)
@@ -59,7 +62,10 @@ public sealed class PostgresVectorSearchRepository(
                 match.ChunkId,
                 match.ChunkIndex,
                 match.Text,
-                1d - match.Distance))
+                1d - match.Distance,
+                match.Version,
+                match.SourcePageNumber,
+                match.SectionTitle))
             .ToListAsync(cancellationToken);
     }
 }
