@@ -1,6 +1,7 @@
 using InsightVault.Application.Interfaces;
 using InsightVault.Domain.Entities;
 using InsightVault.Domain.Enums;
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace InsightVault.Infrastructure.Persistence.Repositories;
@@ -8,6 +9,28 @@ namespace InsightVault.Infrastructure.Persistence.Repositories;
 public sealed class DocumentRepository(ApplicationDbContext dbContext)
     : IDocumentRepository, IDocumentSearchRepository, IVectorSearchRepository
 {
+    /// <inheritdoc />
+    public async Task<T> ExecuteSerializableAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        try
+        {
+            var result = await operation(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
     /// <inheritdoc />
     public async Task<DocumentUsage> GetOwnedUsageAsync(
         string ownerUserId,

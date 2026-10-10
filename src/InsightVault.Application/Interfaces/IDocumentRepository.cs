@@ -4,6 +4,13 @@ namespace InsightVault.Application.Interfaces;
 
 public interface IDocumentRepository
 {
+    /// <summary>
+    /// Executes an owner write operation with serializable isolation so quota decisions cannot be bypassed by concurrent uploads.
+    /// </summary>
+    Task<T> ExecuteSerializableAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken = default) => operation(cancellationToken);
+
     /// <summary>Returns the count and total stored bytes for documents owned by a user.</summary>
     Task<DocumentUsage> GetOwnedUsageAsync(
         string ownerUserId,

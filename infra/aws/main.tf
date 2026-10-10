@@ -115,6 +115,8 @@ resource "aws_iam_role" "api_task" {
 }
 
 data "aws_iam_policy_document" "api_task" {
+  count = var.enable_workload_iam_roles && var.enable_document_processing_queues ? 1 : 0
+
   statement {
     sid       = "ListPrivateDocumentBucket"
     effect    = "Allow"
@@ -153,7 +155,7 @@ resource "aws_iam_role_policy" "api_task" {
 
   name   = "${var.project_name}-${var.environment}-api-task"
   role   = aws_iam_role.api_task[0].id
-  policy = data.aws_iam_policy_document.api_task.json
+  policy = data.aws_iam_policy_document.api_task[0].json
 }
 
 resource "aws_iam_role" "worker_task" {
@@ -164,6 +166,8 @@ resource "aws_iam_role" "worker_task" {
 }
 
 data "aws_iam_policy_document" "worker_task" {
+  count = var.enable_workload_iam_roles && var.enable_document_processing_queues ? 1 : 0
+
   statement {
     sid       = "ReadPrivateDocumentObjects"
     effect    = "Allow"
@@ -200,5 +204,5 @@ resource "aws_iam_role_policy" "worker_task" {
 
   name   = "${var.project_name}-${var.environment}-worker-task"
   role   = aws_iam_role.worker_task[0].id
-  policy = data.aws_iam_policy_document.worker_task.json
+  policy = data.aws_iam_policy_document.worker_task[0].json
 }

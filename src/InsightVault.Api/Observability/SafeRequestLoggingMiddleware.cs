@@ -18,23 +18,38 @@ public sealed class SafeRequestLoggingMiddleware(
         catch (Exception exception)
         {
             logger.LogError(
-                "Request failed. TraceId={TraceId} Method={Method} Path={Path} ErrorType={ErrorType}",
+                "Request failed. TraceId={TraceId} Method={Method} Route={Route} ErrorType={ErrorType}",
                 context.TraceIdentifier,
                 context.Request.Method,
-                context.Request.Path.Value,
+                GetSafeRoute(context),
                 exception.GetType().Name);
             throw;
         }
         finally
         {
             logger.LogInformation(
-                "Request completed. TraceId={TraceId} Method={Method} Path={Path} StatusCode={StatusCode} DurationMs={DurationMs} DocumentId={DocumentId}",
+                "Request completed. TraceId={TraceId} Method={Method} Route={Route} StatusCode={StatusCode} DurationMs={DurationMs} DocumentId={DocumentId}",
                 context.TraceIdentifier,
                 context.Request.Method,
-                context.Request.Path.Value,
+                GetSafeRoute(context),
                 context.Response.StatusCode,
                 stopwatch.ElapsedMilliseconds,
-                context.Request.RouteValues.TryGetValue("id", out var documentId) ? documentId : null);
+                GetSafeDocumentId(context));
         }
+    }
+
+    private static string GetSafeRoute(HttpContext context)
+    {
+        return context.GetEndpoint() is Microsoft.AspNetCore.Routing.RouteEndpoint endpoint
+            ? endpoint.RoutePattern.RawText ?? "unknown"
+            : "unmatched";
+    }
+
+    private static Guid? GetSafeDocumentId(HttpContext context)
+    {
+        return context.Request.RouteValues.TryGetValue("id", out var value)
+               && Guid.TryParse(value?.ToString(), out var documentId)
+            ? documentId
+            : null;
     }
 }

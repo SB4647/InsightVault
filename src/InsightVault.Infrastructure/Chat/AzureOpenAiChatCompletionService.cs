@@ -79,14 +79,22 @@ public sealed class AzureOpenAiChatCompletionService(
         for (var i = 0; i < contexts.Count; i++)
         {
             var context = contexts[i];
-            builder.AppendLine($"[{i + 1}] {context.DocumentName}, chunk {context.ChunkIndex}");
             builder.AppendLine("<untrusted-document>");
-            builder.AppendLine(context.Text);
+            builder.AppendLine($"Source number: {i + 1}; document: {EscapeUntrustedDocumentValue(context.DocumentName)}; chunk: {context.ChunkIndex}");
+            builder.AppendLine(EscapeUntrustedDocumentValue(context.Text));
             builder.AppendLine("</untrusted-document>");
             builder.AppendLine();
         }
 
         return builder.ToString();
+    }
+
+    private static string EscapeUntrustedDocumentValue(string value)
+    {
+        return value
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal);
     }
 
     private void EnsureConfigured()

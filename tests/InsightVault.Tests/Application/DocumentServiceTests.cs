@@ -101,6 +101,59 @@ public class DocumentServiceTests
     }
 
     [Fact]
+    public async Task UploadAsync_ConcurrentRequests_CannotBothConsumeTheFinalDocumentQuotaSlot()
+    {
+        var repository = new InMemoryDocumentRepository();
+        var blobStorage = new FirstUploadBlockingBlobStorageService();
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            TimeProvider.System,
+            new StubUserLookupService(),
+            new RecordingOutboxRepository(),
+            new UploadQuotaOptions
+            {
+                MaxDocumentsPerOwner = 1,
+                MaxStoredBytesPerOwner = 1_000
+            });
+
+        var firstUpload = service.UploadAsync(
+            new UploadDocumentCommand("first.pdf", "application/pdf", 100, new MemoryStream([1]), "owner-1"));
+        await blobStorage.FirstUploadStarted;
+
+        var secondUpload = service.UploadAsync(
+            new UploadDocumentCommand("second.pdf", "application/pdf", 100, new MemoryStream([2]), "owner-1"));
+
+        var completedBeforeTheFirstUploadWasReleased = await Task.WhenAny(secondUpload, Task.Delay(250));
+
+        Assert.NotSame(secondUpload, completedBeforeTheFirstUploadWasReleased);
+
+        blobStorage.AllowFirstUpload();
+        await firstUpload;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => secondUpload);
+        Assert.Single(repository.Documents);
+    }
+
+    [Fact]
+    public async Task UploadAsync_WhenMetadataPersistenceFails_DeletesTheUploadedBlob()
+    {
+        var repository = new InMemoryDocumentRepository { ThrowOnSaveChanges = true };
+        var blobStorage = new RecordingBlobStorageService();
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            TimeProvider.System,
+            new StubUserLookupService(),
+            new RecordingOutboxRepository());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.UploadAsync(
+            new UploadDocumentCommand("failed.pdf", "application/pdf", 100, new MemoryStream([1]), "owner-1")));
+
+        Assert.NotNull(blobStorage.UploadedBlobName);
+        Assert.Equal(blobStorage.UploadedBlobName, blobStorage.DeletedBlobName);
+    }
+
+    [Fact]
     public async Task RetryProcessingAsync_ForFailedOwnedDocument_ResetsStatusAndCreatesOutboxEntry()
     {
         var document = CreateDocument("owner-1");
@@ -392,9 +445,27 @@ public class DocumentServiceTests
 
     private sealed class InMemoryDocumentRepository : IDocumentRepository
     {
+        private readonly SemaphoreSlim _writeLock = new(1, 1);
+
         public List<Document> Documents { get; } = [];
         public int AddPermissionCallCount { get; private set; }
         public int SaveChangesCallCount { get; private set; }
+        public bool ThrowOnSaveChanges { get; init; }
+
+        public async Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken = default)
+        {
+            await _writeLock.WaitAsync(cancellationToken);
+            try
+            {
+                return await operation(cancellationToken);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
 
         public Task<DocumentUsage> GetOwnedUsageAsync(
             string ownerUserId,
@@ -455,6 +526,11 @@ public class DocumentServiceTests
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveChangesCallCount++;
+            if (ThrowOnSaveChanges)
+            {
+                throw new InvalidOperationException("Simulated persistence failure.");
+            }
+
             return Task.CompletedTask;
         }
     }
@@ -518,6 +594,39 @@ public class DocumentServiceTests
             DeletedBlobName = blobName;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class FirstUploadBlockingBlobStorageService : IBlobStorageService
+    {
+        private readonly TaskCompletionSource _firstUploadStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _allowFirstUpload = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _uploadCount;
+
+        public Task FirstUploadStarted => _firstUploadStarted.Task;
+
+        public async Task UploadAsync(
+            string blobName,
+            Stream content,
+            string contentType,
+            CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Increment(ref _uploadCount) != 1)
+            {
+                return;
+            }
+
+            _firstUploadStarted.TrySetResult();
+            await _allowFirstUpload.Task.WaitAsync(cancellationToken);
+        }
+
+        public Task<Stream> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Stream>(new MemoryStream());
+        }
+
+        public Task DeleteAsync(string blobName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void AllowFirstUpload() => _allowFirstUpload.TrySetResult();
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
