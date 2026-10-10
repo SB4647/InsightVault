@@ -4,6 +4,7 @@ using InsightVault.Application.Features.Chat.DTOs;
 using InsightVault.Application.Features.Chat.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace InsightVault.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace InsightVault.Api.Controllers;
 public sealed class ChatController(IChatService chatService) : ControllerBase
 {
     [HttpPost]
+    [EnableRateLimiting("interactive")]
     [ProducesResponseType(typeof(ChatResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ChatResponseDto>> Ask(

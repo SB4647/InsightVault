@@ -2,6 +2,7 @@ using InsightVault.Api.Auth;
 using InsightVault.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace InsightVault.Api.Controllers;
 
@@ -12,6 +13,7 @@ public sealed class AuthController(
     IJwtTokenService jwtTokenService) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting("authentication")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Register(
@@ -39,6 +41,7 @@ public sealed class AuthController(
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("authentication")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
