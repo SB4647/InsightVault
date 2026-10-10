@@ -92,6 +92,10 @@ Grounded answer generated from retrieved document chunks, with cited sources sho
 - Clear expired frontend sessions when protected APIs return `401 Unauthorized`
 - Enforce server-side PDF upload validation
 - Keep blob names out of public document DTOs
+- Limit authentication, upload, chat, and search requests before they consume unnecessary resources
+- Enforce owner-level document-count and storage quotas in a serializable database transaction
+- Reject obvious question prompt-injection attempts before retrieval and treat PDF text as untrusted reference data
+- Log only safe request diagnostics: no bodies, tokens, keys, document text, connection strings, or SSO credentials
 
 ## Architecture
 
@@ -333,6 +337,15 @@ Returns:
   },
   "Storage": {
     "Provider": "Azure"
+  },
+  "UploadQuota": {
+    "MaxDocumentsPerOwner": 100,
+    "MaxStoredBytesPerOwner": 500000000
+  },
+  "RateLimiting": {
+    "AuthenticationPermitLimit": 5,
+    "UploadPermitLimit": 10,
+    "InteractivePermitLimit": 30
   },
   "Retrieval": {
     "TopK": 5,
@@ -597,7 +610,17 @@ See [docs/deployment.md](docs/deployment.md) for local, Docker, Terraform import
 
 ### AWS S3 Design: Declared, Not Deployed
 
-The separate [AWS Terraform module](infra/aws/README.md) declares a private document bucket, S3-managed encryption, public-access blocking, TLS-only access, versioning, and lifecycle cleanup. `terraform init -backend=false` and `terraform validate` are safe local checks. Do not run `plan` or `apply` for this module until you deliberately choose to deploy and accept the associated AWS charges.
+The separate [AWS Terraform module](infra/aws/README.md) declares a private document bucket, S3-managed encryption, public-access blocking, TLS-only access, and lifecycle cleanup. `terraform init -backend=false` and `terraform validate` are safe local checks. Do not run `plan` or `apply` for this module until you deliberately choose to deploy and accept the associated AWS charges.
+
+### Step 7: Security and Cost Controls
+
+InsightVault applies local API rate limits (authentication: 5 requests/minute per IP; uploads: 10/hour per user; chat and search: 30/minute per user), plus an owner-only quota of 100 documents and 500 MB by default. Adjust these non-secret values in `appsettings.json` only when you understand the impact on genuine users.
+
+Chat questions are checked for obvious instruction-override attempts before retrieval. Document excerpts are sent to the model as explicitly marked untrusted reference data, so instructions found inside a PDF cannot override the system rules. Request and worker logs contain trace IDs and operational metadata, not questions, document text, authentication headers, API keys, connection strings, or AWS credentials.
+
+The authentication limiter intentionally keys on the direct TCP client IP address. InsightVault does **not** trust `X-Forwarded-For` by default because a public client can forge that header. Before placing the API behind an ALB or another reverse proxy, configure ASP.NET Core forwarded headers with that proxy's trusted private network; otherwise every request could be attributed to the proxy rather than the real client.
+
+The AWS Terraform module declares future least-privilege API and worker task roles behind `enable_workload_iam_roles = false`. It can reference exact existing Secrets Manager ARNs, but never creates a secret. IAM itself is free; S3 storage/requests, SQS requests, and stored Secrets Manager secrets can cost money only after an explicitly approved apply. See [the AWS Terraform guide](infra/aws/README.md) for permission and cost details.
 
 ## Engineering Practices
 

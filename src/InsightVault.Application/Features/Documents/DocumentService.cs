@@ -11,9 +11,12 @@ public sealed class DocumentService(
     IBlobStorageService blobStorageService,
     TimeProvider timeProvider,
     IUserLookupService userLookupService,
-    IDocumentProcessingOutboxRepository? documentProcessingOutboxRepository = null) : IDocumentService
+    IDocumentProcessingOutboxRepository? documentProcessingOutboxRepository = null,
+    UploadQuotaOptions? uploadQuotaOptions = null) : IDocumentService
 {
     public const long MaxUploadSizeInBytes = 25_000_000;
+
+    private readonly UploadQuotaOptions _uploadQuotaOptions = uploadQuotaOptions ?? new UploadQuotaOptions();
 
     public async Task<DocumentDto> UploadAsync(
         UploadDocumentCommand command,
@@ -21,39 +24,64 @@ public sealed class DocumentService(
     {
         var safeFileName = Path.GetFileName(command.FileName);
         ValidateUpload(command, safeFileName);
+        string? uploadedBlobName = null;
 
-        var extension = Path.GetExtension(safeFileName);
-        var blobName = $"documents/{Guid.NewGuid():N}{extension}";
-
-        if (command.Content.CanSeek)
+        try
         {
-            command.Content.Position = 0;
+            return await documentRepository.ExecuteSerializableAsync(async transactionCancellationToken =>
+            {
+                await EnsureOwnerHasAvailableQuotaAsync(command, transactionCancellationToken);
+
+                var extension = Path.GetExtension(safeFileName);
+                uploadedBlobName = $"documents/{Guid.NewGuid():N}{extension}";
+
+                if (command.Content.CanSeek)
+                {
+                    command.Content.Position = 0;
+                }
+
+                await blobStorageService.UploadAsync(
+                    uploadedBlobName,
+                    command.Content,
+                    command.ContentType,
+                    transactionCancellationToken);
+
+                var document = Document.Create(
+                    safeFileName,
+                    command.ContentType,
+                    command.SizeInBytes,
+                    uploadedBlobName,
+                    timeProvider.GetUtcNow().UtcDateTime,
+                    command.OwnerUserId);
+
+                await documentRepository.AddAsync(document, transactionCancellationToken);
+                await GetOutboxRepository().AddAsync(
+                    DocumentProcessingOutboxEntry.Create(
+                        document.Id,
+                        document.OwnerUserId,
+                        timeProvider.GetUtcNow().UtcDateTime),
+                    transactionCancellationToken);
+                await documentRepository.SaveChangesAsync(transactionCancellationToken);
+
+                return MapToDto(document, command.OwnerUserId);
+            }, cancellationToken);
         }
+        catch
+        {
+            if (!string.IsNullOrEmpty(uploadedBlobName))
+            {
+                try
+                {
+                    await blobStorageService.DeleteAsync(uploadedBlobName, CancellationToken.None);
+                }
+                catch
+                {
+                    // Preserve the original upload failure when best-effort storage cleanup also fails.
+                }
+            }
 
-        await blobStorageService.UploadAsync(
-            blobName,
-            command.Content,
-            command.ContentType,
-            cancellationToken);
-
-        var document = Document.Create(
-            safeFileName,
-            command.ContentType,
-            command.SizeInBytes,
-            blobName,
-            timeProvider.GetUtcNow().UtcDateTime,
-            command.OwnerUserId);
-
-        await documentRepository.AddAsync(document, cancellationToken);
-        await GetOutboxRepository().AddAsync(
-            DocumentProcessingOutboxEntry.Create(
-                document.Id,
-                document.OwnerUserId,
-                timeProvider.GetUtcNow().UtcDateTime),
-            cancellationToken);
-        await documentRepository.SaveChangesAsync(cancellationToken);
-
-        return MapToDto(document, command.OwnerUserId);
+            throw;
+        }
     }
 
     private static void ValidateUpload(UploadDocumentCommand command, string safeFileName)
@@ -81,6 +109,22 @@ public sealed class DocumentService(
         if (!string.Equals(command.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Only application/pdf files can be uploaded.", nameof(command));
+        }
+    }
+
+    private async Task EnsureOwnerHasAvailableQuotaAsync(
+        UploadDocumentCommand command,
+        CancellationToken cancellationToken)
+    {
+        var usage = await documentRepository.GetOwnedUsageAsync(command.OwnerUserId, cancellationToken);
+        if (usage.DocumentCount >= _uploadQuotaOptions.MaxDocumentsPerOwner)
+        {
+            throw new InvalidOperationException("Document upload quota has been reached for this user.");
+        }
+
+        if (usage.StoredBytes > _uploadQuotaOptions.MaxStoredBytesPerOwner - command.SizeInBytes)
+        {
+            throw new InvalidOperationException("Storage upload quota has been reached for this user.");
         }
     }
 

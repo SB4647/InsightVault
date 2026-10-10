@@ -4,6 +4,7 @@ using InsightVault.Application.Features.Documents.Commands;
 using InsightVault.Application.Features.Documents.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace InsightVault.Api.Controllers;
 
@@ -25,6 +26,7 @@ public sealed class DocumentsController(
     }
 
     [HttpPost]
+    [EnableRateLimiting("upload")]
     [RequestSizeLimit(DocumentService.MaxUploadSizeInBytes)]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

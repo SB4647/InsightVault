@@ -12,7 +12,8 @@ public sealed class ChatService(
     ISemanticSearchService semanticSearchService,
     IChatCompletionService chatCompletionService,
     IChatAnswerRepository chatAnswerRepository,
-    RetrievalOptions retrievalOptions) : IChatService
+    RetrievalOptions retrievalOptions,
+    IQuestionSafetyService? questionSafetyService = null) : IChatService
 {
     private const string NoRelevantContentAnswer =
         "I could not find relevant document content to answer that question.";
@@ -30,6 +31,8 @@ public sealed class ChatService(
         {
             throw new ArgumentException("Owner user id is required.", nameof(query));
         }
+
+        (questionSafetyService ?? new QuestionSafetyService()).ValidateQuestion(query.Question);
 
         var searchResults = await semanticSearchService.SearchAsync(
             new SearchDocumentsQuery(query.Question, query.OwnerUserId),

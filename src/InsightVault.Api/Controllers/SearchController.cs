@@ -4,6 +4,7 @@ using InsightVault.Application.Features.Search.DTOs;
 using InsightVault.Application.Features.Search.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace InsightVault.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace InsightVault.Api.Controllers;
 public sealed class SearchController(ISemanticSearchService semanticSearchService) : ControllerBase
 {
     [HttpGet]
+    [EnableRateLimiting("interactive")]
     [ProducesResponseType(typeof(IReadOnlyList<SearchResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IReadOnlyList<SearchResultDto>>> Search(

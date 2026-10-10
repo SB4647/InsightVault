@@ -141,6 +141,16 @@ public class DocumentProcessingServiceTests
 
         public int SaveChangesCallCount { get; private set; }
 
+        public Task<DocumentUsage> GetOwnedUsageAsync(
+            string ownerUserId,
+            CancellationToken cancellationToken = default)
+        {
+            var ownedDocuments = _documents.Where(document => document.OwnerUserId == ownerUserId).ToList();
+            return Task.FromResult(new DocumentUsage(
+                ownedDocuments.Count,
+                ownedDocuments.Sum(document => document.SizeInBytes)));
+        }
+
         public Task AddAsync(Document document, CancellationToken cancellationToken = default)
         {
             _documents.Add(document);

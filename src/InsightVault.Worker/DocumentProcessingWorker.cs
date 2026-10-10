@@ -29,7 +29,10 @@ public sealed class DocumentProcessingWorker(
                 }
                 catch (Exception exception)
                 {
-                    logger.LogError(exception, "Document processing failed; the queue message will remain retryable.");
+                    logger.LogError(
+                        "Document processing failed; the queue message will remain retryable. DocumentId={DocumentId} ErrorType={ErrorType}",
+                        message.Job.DocumentId,
+                        exception.GetType().Name);
                 }
             }
         }

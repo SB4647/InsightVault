@@ -1,4 +1,6 @@
 using InsightVault.Api.Auth;
+using InsightVault.Api.Observability;
+using InsightVault.Api.RateLimiting;
 using InsightVault.Api.ProcessingQueue;
 using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Documents;
@@ -8,6 +10,7 @@ using InsightVault.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,12 +20,35 @@ builder.Services.AddHealthChecks();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
+var rateLimitOptions = builder.Configuration.GetSection(ApiRateLimitOptions.SectionName).Get<ApiRateLimitOptions>() ?? new ApiRateLimitOptions();
+rateLimitOptions.Validate();
+builder.Services.AddSingleton(rateLimitOptions);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("authentication", context => CreateFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        rateLimitOptions.AuthenticationPermitLimit,
+        TimeSpan.FromMinutes(1)));
+    options.AddPolicy("upload", context => CreateFixedWindowLimiter(
+        GetRateLimitUserKey(context),
+        rateLimitOptions.UploadPermitLimit,
+        TimeSpan.FromHours(1)));
+    options.AddPolicy("interactive", context => CreateFixedWindowLimiter(
+        GetRateLimitUserKey(context),
+        rateLimitOptions.InteractivePermitLimit,
+        TimeSpan.FromMinutes(1)));
+});
+var uploadQuotaOptions = builder.Configuration.GetSection(UploadQuotaOptions.SectionName).Get<UploadQuotaOptions>() ?? new UploadQuotaOptions();
+uploadQuotaOptions.Validate();
+builder.Services.AddSingleton(uploadQuotaOptions);
 var retrievalOptions = builder.Configuration.GetSection(RetrievalOptions.SectionName).Get<RetrievalOptions>() ?? new RetrievalOptions();
 retrievalOptions.Validate();
 builder.Services.AddSingleton(retrievalOptions);
 builder.Services.AddSingleton<HybridRetrievalService>();
 builder.Services.AddScoped<ISemanticSearchService, SemanticSearchService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSingleton<IQuestionSafetyService, QuestionSafetyService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -70,12 +96,14 @@ if (app.Environment.IsDevelopment())
 
 if (builder.Configuration.GetValue("HttpsRedirection:Enabled", true))
 {
-    app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 }
 
+app.UseRouting();
 app.UseCors("ClientApp");
-
 app.UseAuthentication();
+app.UseRateLimiter();
+app.UseMiddleware<SafeRequestLoggingMiddleware>();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");
@@ -101,4 +129,25 @@ static string[] GetAllowedCorsOrigins(IConfiguration configuration)
     }
 
     return configuredOrigins;
+}
+
+static RateLimitPartition<string> CreateFixedWindowLimiter(string partitionKey, int permitLimit, TimeSpan window)
+{
+    return RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey,
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitLimit,
+            Window = window,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0,
+            AutoReplenishment = true
+        });
+}
+
+static string GetRateLimitUserKey(HttpContext context)
+{
+    return context.User.Identity?.IsAuthenticated == true
+        ? context.User.GetRequiredUserId()
+        : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 }

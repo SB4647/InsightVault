@@ -26,3 +26,13 @@ output "document_processing_dlq_url" {
   description = "URL of the processing dead-letter queue when explicitly enabled."
   value       = try(aws_sqs_queue.document_processing_dlq[0].url, null)
 }
+
+output "api_task_role_arn" {
+  description = "ARN of the least-privilege API workload role when explicitly enabled with the processing queues."
+  value       = try(aws_iam_role.api_task[0].arn, null)
+}
+
+output "worker_task_role_arn" {
+  description = "ARN of the least-privilege worker workload role when explicitly enabled with the processing queues."
+  value       = try(aws_iam_role.worker_task[0].arn, null)
+}
