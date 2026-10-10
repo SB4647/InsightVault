@@ -1,4 +1,5 @@
 using InsightVault.Api.Auth;
+using InsightVault.Api.Observability;
 using InsightVault.Api.ProcessingQueue;
 using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Documents;
@@ -78,6 +79,8 @@ if (builder.Configuration.GetValue("HttpsRedirection:Enabled", true))
 }
 
 app.UseCors("ClientApp");
+
+app.UseMiddleware<SafeRequestLoggingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
