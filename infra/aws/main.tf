@@ -94,3 +94,111 @@ resource "aws_sqs_queue" "document_processing" {
     maxReceiveCount     = 3
   })
 }
+
+data "aws_iam_policy_document" "ecs_task_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "api_task" {
+  count = var.enable_workload_iam_roles && var.enable_document_processing_queues ? 1 : 0
+
+  name               = "${var.project_name}-${var.environment}-api-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+}
+
+data "aws_iam_policy_document" "api_task" {
+  statement {
+    sid       = "ListPrivateDocumentBucket"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.documents.arn]
+  }
+
+  statement {
+    sid       = "ManagePrivateDocumentObjects"
+    effect    = "Allow"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.documents.arn}/*"]
+  }
+
+  statement {
+    sid       = "QueueDocumentProcessing"
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.document_processing[0].arn]
+  }
+
+  dynamic "statement" {
+    for_each = length(var.api_secret_arns) == 0 ? [] : [true]
+
+    content {
+      sid       = "ReadConfiguredApiSecrets"
+      effect    = "Allow"
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = var.api_secret_arns
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "api_task" {
+  count = var.enable_workload_iam_roles && var.enable_document_processing_queues ? 1 : 0
+
+  name   = "${var.project_name}-${var.environment}-api-task"
+  role   = aws_iam_role.api_task[0].id
+  policy = data.aws_iam_policy_document.api_task.json
+}
+
+resource "aws_iam_role" "worker_task" {
+  count = var.enable_workload_iam_roles && var.enable_document_processing_queues ? 1 : 0
+
+  name               = "${var.project_name}-${var.environment}-worker-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+}
+
+data "aws_iam_policy_document" "worker_task" {
+  statement {
+    sid       = "ReadPrivateDocumentObjects"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.documents.arn}/*"]
+  }
+
+  statement {
+    sid    = "ProcessDocumentJobs"
+    effect = "Allow"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:ChangeMessageVisibility",
+      "sqs:GetQueueAttributes"
+    ]
+    resources = [aws_sqs_queue.document_processing[0].arn]
+  }
+
+  dynamic "statement" {
+    for_each = length(var.worker_secret_arns) == 0 ? [] : [true]
+
+    content {
+      sid       = "ReadConfiguredWorkerSecrets"
+      effect    = "Allow"
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = var.worker_secret_arns
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "worker_task" {
+  count = var.enable_workload_iam_roles && var.enable_document_processing_queues ? 1 : 0
+
+  name   = "${var.project_name}-${var.environment}-worker-task"
+  role   = aws_iam_role.worker_task[0].id
+  policy = data.aws_iam_policy_document.worker_task.json
+}
