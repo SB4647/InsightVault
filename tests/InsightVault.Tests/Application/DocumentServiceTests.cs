@@ -72,6 +72,35 @@ public class DocumentServiceTests
     }
 
     [Fact]
+    public async Task UploadAsync_WhenOwnerReachedDocumentQuota_RejectsBeforeStoringTheBlob()
+    {
+        var repository = new InMemoryDocumentRepository();
+        for (var index = 0; index < 100; index++)
+        {
+            repository.Documents.Add(CreateDocument("owner-1"));
+        }
+
+        var blobStorage = new RecordingBlobStorageService();
+        var service = new DocumentService(
+            repository,
+            blobStorage,
+            TimeProvider.System,
+            new StubUserLookupService(),
+            new RecordingOutboxRepository());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.UploadAsync(
+            new UploadDocumentCommand(
+                "quota.pdf",
+                "application/pdf",
+                100,
+                new MemoryStream([1]),
+                "owner-1")));
+
+        Assert.Null(blobStorage.UploadedBlobName);
+        Assert.Equal(100, repository.Documents.Count);
+    }
+
+    [Fact]
     public async Task RetryProcessingAsync_ForFailedOwnedDocument_ResetsStatusAndCreatesOutboxEntry()
     {
         var document = CreateDocument("owner-1");
@@ -366,6 +395,16 @@ public class DocumentServiceTests
         public List<Document> Documents { get; } = [];
         public int AddPermissionCallCount { get; private set; }
         public int SaveChangesCallCount { get; private set; }
+
+        public Task<DocumentUsage> GetOwnedUsageAsync(
+            string ownerUserId,
+            CancellationToken cancellationToken = default)
+        {
+            var ownedDocuments = Documents.Where(document => document.OwnerUserId == ownerUserId).ToList();
+            return Task.FromResult(new DocumentUsage(
+                ownedDocuments.Count,
+                ownedDocuments.Sum(document => document.SizeInBytes)));
+        }
 
         public Task AddAsync(Document document, CancellationToken cancellationToken = default)
         {

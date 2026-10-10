@@ -4,6 +4,11 @@ namespace InsightVault.Application.Interfaces;
 
 public interface IDocumentRepository
 {
+    /// <summary>Returns the count and total stored bytes for documents owned by a user.</summary>
+    Task<DocumentUsage> GetOwnedUsageAsync(
+        string ownerUserId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Document document, CancellationToken cancellationToken = default);
 
     Task<Document?> GetByIdAsync(
@@ -26,3 +31,6 @@ public interface IDocumentRepository
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>Represents the storage usage used to decide whether an owner may upload another document.</summary>
+public sealed record DocumentUsage(int DocumentCount, long StoredBytes);

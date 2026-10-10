@@ -8,6 +8,23 @@ namespace InsightVault.Infrastructure.Persistence.Repositories;
 public sealed class DocumentRepository(ApplicationDbContext dbContext)
     : IDocumentRepository, IDocumentSearchRepository, IVectorSearchRepository
 {
+    /// <inheritdoc />
+    public async Task<DocumentUsage> GetOwnedUsageAsync(
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var usage = await dbContext.Documents
+            .AsNoTracking()
+            .Where(document => document.OwnerUserId == ownerUserId)
+            .GroupBy(_ => 1)
+            .Select(group => new DocumentUsage(
+                group.Count(),
+                group.Sum(document => document.SizeInBytes)))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return usage ?? new DocumentUsage(0, 0);
+    }
+
     public async Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         await dbContext.Documents.AddAsync(document, cancellationToken);

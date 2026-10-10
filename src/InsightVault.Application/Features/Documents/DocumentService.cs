@@ -11,9 +11,12 @@ public sealed class DocumentService(
     IBlobStorageService blobStorageService,
     TimeProvider timeProvider,
     IUserLookupService userLookupService,
-    IDocumentProcessingOutboxRepository? documentProcessingOutboxRepository = null) : IDocumentService
+    IDocumentProcessingOutboxRepository? documentProcessingOutboxRepository = null,
+    UploadQuotaOptions? uploadQuotaOptions = null) : IDocumentService
 {
     public const long MaxUploadSizeInBytes = 25_000_000;
+
+    private readonly UploadQuotaOptions _uploadQuotaOptions = uploadQuotaOptions ?? new UploadQuotaOptions();
 
     public async Task<DocumentDto> UploadAsync(
         UploadDocumentCommand command,
@@ -21,6 +24,7 @@ public sealed class DocumentService(
     {
         var safeFileName = Path.GetFileName(command.FileName);
         ValidateUpload(command, safeFileName);
+        await EnsureOwnerHasAvailableQuotaAsync(command, cancellationToken);
 
         var extension = Path.GetExtension(safeFileName);
         var blobName = $"documents/{Guid.NewGuid():N}{extension}";
@@ -81,6 +85,22 @@ public sealed class DocumentService(
         if (!string.Equals(command.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Only application/pdf files can be uploaded.", nameof(command));
+        }
+    }
+
+    private async Task EnsureOwnerHasAvailableQuotaAsync(
+        UploadDocumentCommand command,
+        CancellationToken cancellationToken)
+    {
+        var usage = await documentRepository.GetOwnedUsageAsync(command.OwnerUserId, cancellationToken);
+        if (usage.DocumentCount >= _uploadQuotaOptions.MaxDocumentsPerOwner)
+        {
+            throw new InvalidOperationException("Document upload quota has been reached for this user.");
+        }
+
+        if (usage.StoredBytes > _uploadQuotaOptions.MaxStoredBytesPerOwner - command.SizeInBytes)
+        {
+            throw new InvalidOperationException("Storage upload quota has been reached for this user.");
         }
     }
 
