@@ -1,0 +1,7 @@
+# Production is intentionally disabled in source control. Enable only after review and a GitHub Environment approval.
+environment                      = "production"
+enable_production_infrastructure = false
+enable_nat_gateway               = false
+
+# A real production configuration must provide immutable ECR image digests, exact Secrets Manager ARNs,
+# an existing ACM certificate ARN, and a globally unique bucket name. Never place secret values here.

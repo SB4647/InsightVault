@@ -399,6 +399,7 @@ docs/superpowers/
 *.tfstate.*
 *.tfvars
 *.tfvars.json
+*.tfplan
 imports.tf
 crash.log
 crash.*.log

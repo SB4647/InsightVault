@@ -2,12 +2,14 @@ using InsightVault.Api.Auth;
 using InsightVault.Api.Observability;
 using InsightVault.Api.RateLimiting;
 using InsightVault.Api.ProcessingQueue;
+using InsightVault.Api.Networking;
 using InsightVault.Application.Features.Chat;
 using InsightVault.Application.Features.Documents;
 using InsightVault.Application.Features.Documents.Processing;
 using InsightVault.Application.Features.Search;
 using InsightVault.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -17,6 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
+var trustedProxyNetworks = builder.Configuration
+    .GetSection("ForwardedHeaders:TrustedProxyNetworks")
+    .Get<string[]>() ?? [];
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    TrustedProxyNetworkConfiguration.Configure(options, trustedProxyNetworks));
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IDocumentChunkingService, DocumentChunkingService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
@@ -94,9 +101,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Must run before HTTPS redirection and rate limiting so the trusted ALB supplies the real scheme and client address.
+app.UseForwardedHeaders();
+
 if (builder.Configuration.GetValue("HttpsRedirection:Enabled", true))
 {
-app.UseHttpsRedirection();
+    app.UseHttpsRedirection();
 }
 
 app.UseRouting();
