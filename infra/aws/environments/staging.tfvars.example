@@ -1,0 +1,12 @@
+# Copy to staging.tfvars outside Git only when a reviewed AWS deployment is approved.
+environment                      = "staging"
+enable_production_infrastructure = false
+enable_nat_gateway               = false
+
+# Required before a real apply:
+# documents_bucket_name = "globally-unique-insightvault-staging-documents"
+# certificate_arn       = "arn:aws:acm:ap-southeast-2:123456789012:certificate/example"
+# api_container_image   = "123456789012.dkr.ecr.ap-southeast-2.amazonaws.com/insightvault-staging-api@sha256:..."
+# worker_container_image = "123456789012.dkr.ecr.ap-southeast-2.amazonaws.com/insightvault-staging-worker@sha256:..."
+# api_task_secrets      = { "ConnectionStrings__DefaultConnection" = "arn:aws:secretsmanager:..." }
+# worker_task_secrets   = { "ConnectionStrings__DefaultConnection" = "arn:aws:secretsmanager:..." }

@@ -1,0 +1,4 @@
+# This file is safe to keep in Git: the master switch prevents resource creation.
+environment                      = "development"
+enable_production_infrastructure = false
+enable_nat_gateway               = false

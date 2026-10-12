@@ -1,0 +1,102 @@
+name: AWS deployment (manual approval required)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options: [development, staging, production]
+      operation:
+        description: "Terraform operation"
+        required: true
+        type: choice
+        options: [validate, plan, apply]
+        default: validate
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    if: inputs.operation == 'validate'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/aws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  plan:
+    if: inputs.operation == 'plan' || inputs.operation == 'apply'
+    runs-on: ubuntu-latest
+    # Plan environments have read-only AWS roles and no required reviewer. They never apply changes.
+    environment: plan-${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: infra/aws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Configure read-only AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - name: Initialise protected remote state
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.AWS_TF_STATE_BUCKET }}"
+          -backend-config="dynamodb_table=${{ vars.AWS_TF_STATE_LOCK_TABLE }}"
+          -backend-config="region=ap-southeast-2"
+          -backend-config="key=insightvault/${{ inputs.environment }}/terraform.tfstate"
+          -backend-config="encrypt=true"
+      - name: Materialise reviewed deployment configuration
+        shell: bash
+        env:
+          TFVARS_JSON: ${{ secrets.AWS_TFVARS_JSON }}
+        run: printf '%s' "$TFVARS_JSON" > deployment.auto.tfvars.json
+      - run: terraform validate
+      - run: terraform plan -out=terraform.tfplan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: insightvault-${{ inputs.environment }}-terraform-plan
+          path: infra/aws/terraform.tfplan
+          retention-days: 1
+
+  apply:
+    if: inputs.operation == 'apply'
+    needs: plan
+    runs-on: ubuntu-latest
+    # Configure required reviewers on development/staging/production GitHub Environments.
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: infra/aws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Configure deployment AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - name: Initialise protected remote state
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.AWS_TF_STATE_BUCKET }}"
+          -backend-config="dynamodb_table=${{ vars.AWS_TF_STATE_LOCK_TABLE }}"
+          -backend-config="region=ap-southeast-2"
+          -backend-config="key=insightvault/${{ inputs.environment }}/terraform.tfstate"
+          -backend-config="encrypt=true"
+      - uses: actions/download-artifact@v4
+        with:
+          name: insightvault-${{ inputs.environment }}-terraform-plan
+          path: infra/aws
+      - name: Apply the exact reviewed plan
+        run: terraform apply -auto-approve terraform.tfplan

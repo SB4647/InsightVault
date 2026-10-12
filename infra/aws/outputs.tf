@@ -1,38 +1,40 @@
 output "configuration_summary" {
-  description = "Configuration summary; resource changes require an explicit Terraform apply."
+  description = "Safety-focused configuration summary. False means Terraform creates no AWS resources."
   value = {
-    environment = var.environment
-    project     = var.project_name
-    region      = var.aws_region
+    environment                  = var.environment
+    project                      = var.project_name
+    region                       = var.aws_region
+    production_infrastructure_on = var.enable_production_infrastructure
+    nat_gateway_on               = var.enable_nat_gateway
   }
 }
 
 output "documents_bucket_name" {
-  description = "Name of the private documents bucket after an explicitly approved deployment."
-  value       = aws_s3_bucket.documents.bucket
-}
-
-output "documents_bucket_arn" {
-  description = "ARN of the private documents bucket after an explicitly approved deployment."
-  value       = aws_s3_bucket.documents.arn
+  description = "Private documents bucket name after an explicitly approved deployment."
+  value       = try(aws_s3_bucket.documents[0].bucket, null)
 }
 
 output "document_processing_queue_url" {
-  description = "URL of the processing queue when explicitly enabled."
+  description = "Processing queue URL after an explicitly approved deployment."
   value       = try(aws_sqs_queue.document_processing[0].url, null)
 }
 
-output "document_processing_dlq_url" {
-  description = "URL of the processing dead-letter queue when explicitly enabled."
-  value       = try(aws_sqs_queue.document_processing_dlq[0].url, null)
-}
-
 output "api_task_role_arn" {
-  description = "ARN of the least-privilege API workload role when explicitly enabled with the processing queues."
+  description = "Least-privilege API task role ARN after an explicitly approved deployment."
   value       = try(aws_iam_role.api_task[0].arn, null)
 }
 
 output "worker_task_role_arn" {
-  description = "ARN of the least-privilege worker workload role when explicitly enabled with the processing queues."
+  description = "Least-privilege worker task role ARN after an explicitly approved deployment."
   value       = try(aws_iam_role.worker_task[0].arn, null)
+}
+
+output "api_load_balancer_dns_name" {
+  description = "Public ALB DNS name after deployment. A DNS record is deliberately out of scope."
+  value       = try(aws_lb.api[0].dns_name, null)
+}
+
+output "postgres_endpoint" {
+  description = "Private PostgreSQL endpoint after deployment. Database migrations are a separate manual release action."
+  value       = try(aws_db_instance.postgres[0].address, null)
 }

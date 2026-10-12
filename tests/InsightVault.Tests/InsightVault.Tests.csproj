@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\src\InsightVault.Domain\InsightVault.Domain.csproj" />
     <ProjectReference Include="..\..\src\InsightVault.Application\InsightVault.Application.csproj" />
     <ProjectReference Include="..\..\src\InsightVault.Infrastructure\InsightVault.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\InsightVault.Api\InsightVault.Api.csproj" />
   </ItemGroup>
 
 </Project>

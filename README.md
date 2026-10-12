@@ -608,9 +608,9 @@ Do not commit `dev.tfvars`, `imports.tf`, or Terraform state files.
 
 See [docs/deployment.md](docs/deployment.md) for local, Docker, Terraform import, and optional paid hosting notes.
 
-### AWS S3 Design: Declared, Not Deployed
+### AWS Production Design: Declared, Not Deployed
 
-The separate [AWS Terraform module](infra/aws/README.md) declares a private document bucket, S3-managed encryption, public-access blocking, TLS-only access, and lifecycle cleanup. `terraform init -backend=false` and `terraform validate` are safe local checks. Do not run `plan` or `apply` for this module until you deliberately choose to deploy and accept the associated AWS charges.
+The separate [AWS Terraform module](infra/aws/README.md) now defines a production-ready VPC, private ECS API/worker tasks, S3, SQS/DLQ, RDS PostgreSQL, CloudWatch, ECR, IAM, ALB/HTTPS, and separate development/staging/production configuration. Every committed environment keeps the master deployment switch off, so `terraform init -backend=false` and `terraform validate` are safe local checks. The manual GitHub workflow uses OIDC and a protected GitHub Environment; it does not deploy anything unless a human deliberately runs and approves it.
 
 ### Step 7: Security and Cost Controls
 
@@ -618,9 +618,9 @@ InsightVault applies local API rate limits (authentication: 5 requests/minute pe
 
 Chat questions are checked for obvious instruction-override attempts before retrieval. Document excerpts are sent to the model as explicitly marked untrusted reference data, so instructions found inside a PDF cannot override the system rules. Request and worker logs contain trace IDs and operational metadata, not questions, document text, authentication headers, API keys, connection strings, or AWS credentials.
 
-The authentication limiter intentionally keys on the direct TCP client IP address. InsightVault does **not** trust `X-Forwarded-For` by default because a public client can forge that header. Before placing the API behind an ALB or another reverse proxy, configure ASP.NET Core forwarded headers with that proxy's trusted private network; otherwise every request could be attributed to the proxy rather than the real client.
+The authentication limiter intentionally uses the direct TCP client address unless a reverse proxy is explicitly configured. In the AWS design, only the private VPC network is trusted to send forwarded headers, and that middleware runs before rate limiting. This prevents public callers forging an `X-Forwarded-For` value while allowing the ALB to report the real client address.
 
-The AWS Terraform module declares future least-privilege API and worker task roles behind `enable_workload_iam_roles = false`. It can reference exact existing Secrets Manager ARNs, but never creates a secret. IAM itself is free; S3 storage/requests, SQS requests, and stored Secrets Manager secrets can cost money only after an explicitly approved apply. See [the AWS Terraform guide](infra/aws/README.md) for permission and cost details.
+The AWS Terraform module defines distinct least-privilege task roles and consumes only exact existing Secrets Manager ARNs. It never creates a secret or includes a secret value. IAM itself is free; the AWS workloads are deliberately not deployed until a human approves a protected deployment. See [the AWS Terraform guide](infra/aws/README.md) for the architecture, costs, and deployment prerequisites.
 
 ## Engineering Practices
 
