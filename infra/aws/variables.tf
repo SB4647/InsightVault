@@ -150,3 +150,9 @@ variable "database_username" {
   type        = string
   default     = "insightvaultadmin"
 }
+
+variable "database_final_snapshot_identifier" {
+  description = "Required final RDS snapshot identifier for production database deletion. Leave empty for development and staging."
+  type        = string
+  default     = ""
+}

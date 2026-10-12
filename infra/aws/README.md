@@ -24,7 +24,7 @@ terraform -chdir=infra/aws init -backend=false
 terraform -chdir=infra/aws validate
 ```
 
-An actual deployment can incur charges for ALB, Fargate, RDS, S3, SQS, CloudWatch logs, Secrets Manager, ECR storage, and public IPv4 addresses. A NAT Gateway is particularly costly; `enable_nat_gateway` stays false by default. A real private workload normally needs approved outbound access to Azure OpenAI, through a NAT Gateway, private endpoint, or an organisation-approved egress proxy.
+An actual deployment can incur charges for ALB, Fargate, RDS, S3, SQS, CloudWatch logs, Secrets Manager, ECR storage, and public IPv4 addresses. A NAT Gateway is particularly costly; `enable_nat_gateway` stays false by default. This defined architecture deliberately refuses an enabled deployment unless NAT is also enabled: its private tasks need outbound access to ECR, CloudWatch, Secrets Manager, S3, SQS, and Azure OpenAI. A future cost-optimised alternative could add the required VPC endpoints plus an approved Azure OpenAI egress path.
 
 Do not use a customer-managed KMS key for this portfolio setup unless there is a specific compliance need. S3, SQS, and RDS use AWS-managed/AWS-owned encryption here to avoid a recurring KMS key charge.
 
@@ -34,7 +34,7 @@ Committed examples live in [environments](environments): `development`, `staging
 
 The module never creates or accepts secret values. `api_task_secrets` and `worker_task_secrets` map application configuration keys (for example, `ConnectionStrings__DefaultConnection`) to exact existing Secrets Manager ARNs. ECS retrieves those values at task start; the application uses its task role, never static keys or your local SSO profile.
 
-Use immutable ECR image digests, an existing ACM certificate ARN, a globally unique bucket name, and exact secret ARNs before a real plan. Run database migrations as a separate release operation after RDS is reachable; do not put migration credentials or commands in Terraform.
+Use immutable ECR image digests, an existing ACM certificate ARN, a globally unique bucket name, exact secret ARNs, and a unique `database_final_snapshot_identifier` for production before a real plan. Run database migrations as a separate release operation after RDS is reachable; do not put migration credentials or commands in Terraform.
 
 ## Manual GitHub deployment gate
 

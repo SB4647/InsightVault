@@ -98,12 +98,18 @@ resource "aws_db_instance" "postgres" {
   backup_retention_period     = var.environment == "production" ? 14 : 7
   deletion_protection         = var.environment == "production"
   skip_final_snapshot         = var.environment != "production"
+  final_snapshot_identifier   = var.environment == "production" ? var.database_final_snapshot_identifier : null
   apply_immediately           = false
 
   lifecycle {
     precondition {
       condition     = !local.enabled || length(trimspace(var.database_name)) > 0
       error_message = "database_name must be configured when production infrastructure is enabled."
+    }
+
+    precondition {
+      condition     = !local.enabled || var.environment != "production" || length(trimspace(var.database_final_snapshot_identifier)) > 0
+      error_message = "database_final_snapshot_identifier is required for production so database removal preserves a final snapshot."
     }
   }
 }

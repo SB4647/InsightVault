@@ -17,6 +17,13 @@ resource "aws_vpc" "this" {
   enable_dns_support   = true
 
   tags = merge(local.common_tags, { Name = "${var.project_name}-${var.environment}" })
+
+  lifecycle {
+    precondition {
+      condition     = !local.enabled || var.enable_nat_gateway
+      error_message = "enable_nat_gateway must be true for this production design because private ECS tasks need outbound access to ECR, CloudWatch, Secrets Manager, S3, SQS, and Azure OpenAI."
+    }
+  }
 }
 
 resource "aws_internet_gateway" "this" {

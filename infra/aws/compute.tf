@@ -94,6 +94,7 @@ resource "aws_ecs_task_definition" "api" {
     environment = [
       { name = "ASPNETCORE_URLS", value = "http://+:8080" },
       { name = "HttpsRedirection__Enabled", value = "false" },
+      { name = "Database__Provider", value = "Postgres" },
       { name = "Storage__Provider", value = "S3" },
       { name = "S3Storage__BucketName", value = aws_s3_bucket.documents[0].bucket },
       { name = "S3Storage__Region", value = var.aws_region },
@@ -129,6 +130,7 @@ resource "aws_ecs_task_definition" "worker" {
     image     = var.worker_container_image
     essential = true
     environment = [
+      { name = "Database__Provider", value = "Postgres" },
       { name = "Storage__Provider", value = "S3" },
       { name = "S3Storage__BucketName", value = aws_s3_bucket.documents[0].bucket },
       { name = "S3Storage__Region", value = var.aws_region },
