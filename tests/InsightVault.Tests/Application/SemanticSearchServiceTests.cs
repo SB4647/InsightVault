@@ -67,6 +67,24 @@ public class SemanticSearchServiceTests
     }
 
     [Fact]
+    public async Task SearchAsync_DoesNotRunScopedRepositoryQueriesConcurrently()
+    {
+        var guard = new SequentialQueryGuard();
+        var options = new RetrievalOptions();
+        var service = new SemanticSearchService(
+            new StubEmbeddingService([1.0f]),
+            new GuardedVectorSearchRepository(guard),
+            new GuardedFullTextSearchRepository(guard),
+            new HybridRetrievalService(options),
+            options);
+
+        var results = await service.SearchAsync(new SearchDocumentsQuery("query", "user-1"));
+
+        Assert.Empty(results);
+        Assert.Equal(2, guard.CompletedCallCount);
+    }
+
+    [Fact]
     public async Task SearchAsync_ExcludesChunksWithoutEmbeddings()
     {
         var document = Document.Create(
@@ -157,6 +175,42 @@ public class SemanticSearchServiceTests
         }
     }
 
+    private sealed class GuardedVectorSearchRepository(SequentialQueryGuard guard) : IVectorSearchRepository
+    {
+        public async Task<IReadOnlyList<VectorSearchMatch>> SearchAsync(VectorSearchRequest request, CancellationToken cancellationToken = default)
+        {
+            await guard.ExecuteAsync();
+            return [];
+        }
+    }
+
+    private sealed class GuardedFullTextSearchRepository(SequentialQueryGuard guard) : IFullTextSearchRepository
+    {
+        public async Task<IReadOnlyList<FullTextSearchMatch>> SearchAsync(FullTextSearchRequest request, CancellationToken cancellationToken = default)
+        {
+            await guard.ExecuteAsync();
+            return [];
+        }
+    }
+
+    private sealed class SequentialQueryGuard
+    {
+        private int _activeCallCount;
+        public int CompletedCallCount { get; private set; }
+
+        public async Task ExecuteAsync()
+        {
+            if (Interlocked.Increment(ref _activeCallCount) != 1)
+            {
+                throw new InvalidOperationException("Repository queries overlapped.");
+            }
+
+            await Task.Delay(100);
+            Interlocked.Decrement(ref _activeCallCount);
+            CompletedCallCount++;
+        }
+    }
+
     private sealed class InMemoryVectorSearchRepository(
         IReadOnlyList<Document> documents) : IVectorSearchRepository
     {
@@ -211,3 +265,4 @@ public class SemanticSearchServiceTests
         }
     }
 }
+

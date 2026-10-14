@@ -14,7 +14,25 @@ public sealed class DocumentProcessingWorker(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            foreach (var message in await queue.ReceiveAsync(5, TimeSpan.FromSeconds(20), stoppingToken))
+            IReadOnlyList<ReceivedDocumentProcessingJob> messages;
+            try
+            {
+                messages = await queue.ReceiveAsync(5, TimeSpan.FromSeconds(20), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    "Document processing queue receive failed; polling will retry. ErrorType={ErrorType}",
+                    exception.GetType().Name);
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                continue;
+            }
+
+            foreach (var message in messages)
             {
                 try
                 {
@@ -38,3 +56,4 @@ public sealed class DocumentProcessingWorker(
         }
     }
 }
+

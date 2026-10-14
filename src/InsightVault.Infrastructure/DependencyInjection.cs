@@ -32,6 +32,9 @@ public static class DependencyInjection
         var useS3Storage = string.Equals(storageProvider, "S3", StringComparison.OrdinalIgnoreCase);
         var useAzureStorage = string.Equals(storageProvider, "Azure", StringComparison.OrdinalIgnoreCase);
         var queueProvider = configuration["Queue:Provider"] ?? "Disabled";
+        var usesSqsQueue = string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase) ||
+                           string.Equals(queueProvider, "Sqs", StringComparison.OrdinalIgnoreCase);
+        var disablesQueue = string.Equals(queueProvider, "Disabled", StringComparison.OrdinalIgnoreCase);
 
         if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
@@ -55,6 +58,23 @@ public static class DependencyInjection
         {
             throw new InvalidOperationException(
                 "Storage:Provider must be either 'Azure' or 'S3'.");
+        }
+
+        if (!usesSqsQueue && !disablesQueue)
+        {
+            throw new InvalidOperationException(
+                "Queue:Provider must be either 'Disabled', 'LocalStack', or 'Sqs'.");
+        }
+
+        if (usesSqsQueue && string.IsNullOrWhiteSpace(configuration["Queue:QueueUrl"]))
+        {
+            throw new InvalidOperationException("Queue:QueueUrl is required when durable queue processing is enabled.");
+        }
+
+        if (string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase) &&
+            string.IsNullOrWhiteSpace(configuration["Queue:ServiceUrl"]))
+        {
+            throw new InvalidOperationException("Queue:ServiceUrl is required when Queue:Provider is 'LocalStack'.");
         }
 
         services
@@ -108,8 +128,7 @@ public static class DependencyInjection
         services.AddScoped<IChatAnswerRepository, ChatAnswerRepository>();
         services.AddScoped<IDocumentProcessingOutboxRepository, DocumentProcessingOutboxRepository>();
         services.AddScoped<IProcessingOutboxDispatcher, DocumentProcessingOutboxDispatcher>();
-        if (string.Equals(queueProvider, "LocalStack", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(queueProvider, "Sqs", StringComparison.OrdinalIgnoreCase))
+        if (usesSqsQueue)
         {
             services.AddSingleton<IAmazonSQS>(provider =>
             {
@@ -156,3 +175,4 @@ public static class DependencyInjection
         return services;
     }
 }
+

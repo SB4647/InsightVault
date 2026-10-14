@@ -16,7 +16,7 @@ It is built as a portfolio-grade full-stack project using ASP.NET Core, React, S
 - RAG chat with grounded answers, page-aware source citations, and stored provenance
 - Clean Architecture project structure
 - Azure Blob Storage by default, with an S3-compatible document-storage adapter
-- Docker Compose local environment for API, SQL Server, PostgreSQL, and opt-in S3Mock
+- Docker Compose local environment for API, worker, SQL Server, PostgreSQL, opt-in S3Mock, and LocalStack SQS
 - Terraform scaffold for low-cost Azure resource management and optional paid hosting
 - GitHub Actions CI for backend, frontend, Docker, and Terraform validation
 - xUnit tests for Domain and Application behavior
@@ -109,12 +109,19 @@ flowchart LR
     Sql["SQL Server\nDocker or LocalDB"]
     Blob["Azure Blob Storage"]
     OpenAI["Azure OpenAI\nEmbeddings + Chat"]
+    Queue["LocalStack SQS\noptional queue profile"]
+    Worker[".NET processing worker\noptional queue profile"]
 
     Browser --> React
     React --> Api
     Api --> Sql
     Api --> Blob
     Api --> OpenAI
+    Api -. optional durable processing .-> Queue
+    Worker --> Queue
+    Worker --> Sql
+    Worker --> Blob
+    Worker --> OpenAI
 ```
 
 ### AWS-Ready Retrieval Path
@@ -259,7 +266,7 @@ Returns:
 ```http
 GET    /api/documents
 POST   /api/documents
-POST   /api/documents/{id}/process
+POST   /api/documents/{id}/retry-processing
 POST   /api/documents/{id}/share
 DELETE /api/documents/{id}
 ```
@@ -528,7 +535,7 @@ Verified results:
 - Docker reported the `postgres` service as healthy and exposed it at `localhost:5433`.
 - EF Core applied `20261002061254_InitialPostgres` to the local PostgreSQL database. The first migration run may show an initial missing `__EFMigrationsHistory` query before EF Core creates that table; this is expected for an empty database.
 - The pgvector integration test run passed `2/2`: it checked nearest authorised chunk ranking and denied an unrelated user access to the vectors.
-- The full test suite also passed `49/49` tests.
+- Test counts vary as new coverage is added. Run `dotnet test InsightVault.slnx` with Docker Desktop available to include the S3Mock and PostgreSQL container tests.
 
 The `postgres-data` Docker volume is local to this computer. Stop the service when finished with `docker compose --profile postgres down`; use `--volumes` only when you intentionally want to erase that local database.
 
@@ -565,6 +572,22 @@ dotnet test tests/InsightVault.Tests/InsightVault.Tests.csproj --no-restore --fi
 
 For a direct local API run instead of Docker Compose, use the checked-in [S3 local example](src/InsightVault.Api/appsettings.S3.example.json) as a reference and set equivalent environment variables for the process. Do not commit a copied `appsettings.S3.json`; it is ignored because it may contain local credentials.
 
+### Local Durable Queue Processing
+
+The queue profile uses LocalStack only; it does not contact AWS or use your AWS SSO profile. It creates the document-processing queue and dead-letter queue automatically, starts the worker, and configures the API to publish upload and retry jobs.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.queue.yml --profile queue up -d --build
+```
+
+The worker needs the same storage and Azure OpenAI embedding configuration as the API. For the local S3 emulator, copy `docker-compose.override.example.yml` to the ignored `docker-compose.override.yml` before starting the queue profile. Upload a PDF, then inspect the document status; successful processing acknowledges the LocalStack message. Failed processing remains retryable and moves to the DLQ after three deliveries.
+
+Stop the local queue stack with:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.queue.yml --profile queue down
+```
+
 ## Database
 
 Current EF Core migrations:
@@ -573,10 +596,14 @@ Current EF Core migrations:
 - `AddDocumentProcessing`: creates `DocumentChunks` and `Embeddings`
 - `AddIdentityAndDocumentOwnership`: creates ASP.NET Core Identity tables and adds `Documents.OwnerUserId`
 - `AddDocumentPermissions`: creates `DocumentPermissions`
+- `AddDocumentProcessingOutbox`: persists reliable processing jobs before queue dispatch
+- `AddRetrievalProvenance`: persists saved answers and citation metadata
+- `MakeCitationSourcesSnapshots`: permits source document deletion without deleting citations
+- `AddCitationSourceContent`: stores immutable document names and quoted source text with citations
 
 ## Cloud Infrastructure
 
-Terraform lives in `infra/terraform`.
+InsightVault retains two separate infrastructure demonstrations. The Azure Terraform scaffold lives in `infra/terraform`; it is the earlier optional Azure hosting design. The AWS production design lives in `infra/aws`, is disabled by default, and uses manual GitHub OIDC approval before any deployment. Neither module creates cloud resources during normal local development.
 
 The current scaffold defaults to low-cost mode and manages/imports:
 
@@ -707,3 +734,4 @@ InsightVault is designed to demonstrate practical full-stack engineering:
 - Docker-based local development
 - Terraform-based Azure infrastructure planning
 - CI quality gates with GitHub Actions
+

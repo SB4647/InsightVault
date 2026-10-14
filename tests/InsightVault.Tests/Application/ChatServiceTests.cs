@@ -86,6 +86,8 @@ public class ChatServiceTests
         Assert.Equal("InsightVault answers questions using processed chunks.", response.Answer);
         var savedAnswer = Assert.Single(answerRepository.SavedAnswers);
         var savedCitation = Assert.Single(savedAnswer.Citations);
+        Assert.Equal("strategy.pdf", savedCitation.DocumentName);
+        Assert.Equal("InsightVault uses retrieval augmented generation over processed document chunks.", savedCitation.SourceText);
         Assert.Equal(3, savedCitation.SourcePageNumber);
         Assert.Equal("Architecture", savedCitation.SectionTitle);
         Assert.Equal(1, savedCitation.Rank);
@@ -234,3 +236,4 @@ public class ChatServiceTests
         }
     }
 }
+

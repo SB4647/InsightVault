@@ -28,15 +28,15 @@ public sealed class SemanticSearchService(
         retrievalOptions.Validate();
         var maximumCandidates = retrievalOptions.TopK * retrievalOptions.CandidateMultiplier;
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query.Query, cancellationToken);
-        var vectorTask = vectorSearchRepository.SearchAsync(
+        // Both repositories can share one scoped DbContext, so they must not execute concurrently.
+        var vectorMatches = await vectorSearchRepository.SearchAsync(
             new VectorSearchRequest(query.OwnerUserId, queryEmbedding, maximumCandidates, query.Query),
             cancellationToken);
-        var fullTextTask = fullTextSearchRepository.SearchAsync(
+        var fullTextMatches = await fullTextSearchRepository.SearchAsync(
             new FullTextSearchRequest(query.OwnerUserId, query.Query, maximumCandidates),
             cancellationToken);
-        await Task.WhenAll(vectorTask, fullTextTask);
 
-        return hybridRetrievalService.Rank(vectorTask.Result, fullTextTask.Result)
+        return hybridRetrievalService.Rank(vectorMatches, fullTextMatches)
             .Select(match => new SearchResultDto(
                 match.DocumentId,
                 match.DocumentName,
@@ -51,3 +51,4 @@ public sealed class SemanticSearchService(
             .ToList();
     }
 }
+

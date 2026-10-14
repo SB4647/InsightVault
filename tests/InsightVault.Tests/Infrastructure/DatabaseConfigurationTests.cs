@@ -98,6 +98,30 @@ public sealed class DatabaseConfigurationTests
     }
 
     [Fact]
+    public void AddInfrastructure_WhenQueueProviderIsUnknown_ThrowsHelpfulException()
+    {
+        var services = new ServiceCollection();
+        var configuration = CreateConfiguration("SqlServer", "Azure", "UnknownQueue");
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddInfrastructure(configuration));
+
+        Assert.Contains("Queue:Provider", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddInfrastructure_WhenEnabledQueueHasNoUrl_ThrowsHelpfulException()
+    {
+        var services = new ServiceCollection();
+        var configuration = CreateConfiguration("SqlServer", "Azure", "Sqs");
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddInfrastructure(configuration));
+
+        Assert.Contains("Queue:QueueUrl", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AddInfrastructure_WhenStorageProviderIsOmitted_KeepsAzureStorageAsTheDefault()
     {
         var services = new ServiceCollection();
@@ -128,22 +152,35 @@ public sealed class DatabaseConfigurationTests
         Assert.NotNull(factoryType);
     }
 
+    /// <summary>
+    /// Locates the repository when test binaries are either under the checkout or in an external artifacts directory.
+    /// </summary>
     private static string FindRepositoryRoot()
     {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
-             directory is not null;
-             directory = directory.Parent)
+        foreach (var startingDirectory in new[]
+                 {
+                     Directory.GetCurrentDirectory(),
+                     AppContext.BaseDirectory
+                 })
         {
-            if (File.Exists(Path.Combine(directory.FullName, "InsightVault.slnx")))
+            for (var directory = new DirectoryInfo(startingDirectory);
+                 directory is not null;
+                 directory = directory.Parent)
             {
-                return directory.FullName;
+                if (File.Exists(Path.Combine(directory.FullName, "InsightVault.slnx")))
+                {
+                    return directory.FullName;
+                }
             }
         }
 
         throw new DirectoryNotFoundException("Could not locate the InsightVault repository root.");
     }
 
-    private static IConfiguration CreateConfiguration(string provider, string? storageProvider = "Azure")
+    private static IConfiguration CreateConfiguration(
+        string provider,
+        string? storageProvider = "Azure",
+        string queueProvider = "Disabled")
     {
         return new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -153,8 +190,10 @@ public sealed class DatabaseConfigurationTests
                 ["Storage:Provider"] = storageProvider,
                 ["AzureBlobStorage:ConnectionString"] = "UseDevelopmentStorage=true",
                 ["AzureBlobStorage:ContainerName"] = "documents",
-                ["S3Storage:BucketName"] = "insightvault-tests"
+                ["S3Storage:BucketName"] = "insightvault-tests",
+                ["Queue:Provider"] = queueProvider
             })
             .Build();
     }
 }
+

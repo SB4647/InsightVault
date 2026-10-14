@@ -13,7 +13,9 @@ public sealed class ChatAnswerCitation
         Guid chatAnswerId,
         Guid documentId,
         int documentVersion,
+        string documentName,
         Guid documentChunkId,
+        string sourceText,
         int sourcePageNumber,
         string? sectionTitle,
         decimal score,
@@ -23,7 +25,9 @@ public sealed class ChatAnswerCitation
         ChatAnswerId = chatAnswerId;
         DocumentId = documentId;
         DocumentVersion = documentVersion;
+        DocumentName = documentName;
         DocumentChunkId = documentChunkId;
+        SourceText = sourceText;
         SourcePageNumber = sourcePageNumber;
         SectionTitle = sectionTitle;
         Score = score;
@@ -34,7 +38,9 @@ public sealed class ChatAnswerCitation
     public Guid ChatAnswerId { get; private set; }
     public Guid DocumentId { get; private set; }
     public int DocumentVersion { get; private set; }
+    public string DocumentName { get; private set; } = string.Empty;
     public Guid DocumentChunkId { get; private set; }
+    public string SourceText { get; private set; } = string.Empty;
     public int SourcePageNumber { get; private set; }
     public string? SectionTitle { get; private set; }
     public decimal Score { get; private set; }
@@ -47,7 +53,9 @@ public sealed class ChatAnswerCitation
         Guid chatAnswerId,
         Guid documentId,
         int documentVersion,
+        string documentName,
         Guid documentChunkId,
+        string sourceText,
         int sourcePageNumber,
         string? sectionTitle,
         decimal score,
@@ -68,14 +76,22 @@ public sealed class ChatAnswerCitation
             throw new ArgumentOutOfRangeException(nameof(score));
         }
 
+        if (string.IsNullOrWhiteSpace(documentName) || string.IsNullOrWhiteSpace(sourceText))
+        {
+            throw new ArgumentException("Citation document name and source text are required.");
+        }
+
         return new ChatAnswerCitation(
             chatAnswerId,
             documentId,
             documentVersion,
+            documentName.Trim(),
             documentChunkId,
+            sourceText.Trim(),
             sourcePageNumber,
             string.IsNullOrWhiteSpace(sectionTitle) ? null : sectionTitle.Trim(),
             score,
             rank);
     }
 }
+

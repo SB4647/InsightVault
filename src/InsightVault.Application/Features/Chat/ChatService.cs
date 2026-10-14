@@ -66,7 +66,9 @@ public sealed class ChatService(
                 answerRecord.Id,
                 citation.DocumentId,
                 citation.DocumentVersion,
+                citation.DocumentName,
                 citation.ChunkId,
+                citation.Text,
                 citation.SourcePageNumber,
                 citation.SectionTitle,
                 Convert.ToDecimal(citation.Score),
@@ -112,3 +114,4 @@ public sealed class ChatService(
 
     private static int GetRank(SearchResultDto result, int index) => result.Rank > 0 ? result.Rank : index + 1;
 }
+
