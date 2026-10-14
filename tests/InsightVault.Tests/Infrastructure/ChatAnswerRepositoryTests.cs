@@ -46,7 +46,9 @@ public sealed class ChatAnswerRepositoryTests
                 answer.Id,
                 document.Id,
                 1,
+                document.OriginalFileName,
                 secondChunk.Id,
+                secondChunk.Text,
                 4,
                 "Review process",
                 0.82m,
@@ -55,7 +57,9 @@ public sealed class ChatAnswerRepositoryTests
                 answer.Id,
                 document.Id,
                 1,
+                document.OriginalFileName,
                 firstChunk.Id,
+                firstChunk.Text,
                 2,
                 null,
                 0.94m,
@@ -75,12 +79,15 @@ public sealed class ChatAnswerRepositoryTests
             Assert.Equal([1, 2], saved.Citations.Select(citation => citation.Rank));
             var firstCitation = saved.Citations.Single(citation => citation.Rank == 1);
             Assert.Equal(1, firstCitation.DocumentVersion);
+            Assert.Equal("policy.pdf", firstCitation.DocumentName);
+            Assert.Equal("Review requirements.", firstCitation.SourceText);
             Assert.Equal(2, firstCitation.SourcePageNumber);
             Assert.Null(firstCitation.SectionTitle);
 
             var secondCitation = saved.Citations.Single(citation => citation.Rank == 2);
             Assert.Equal(4, secondCitation.SourcePageNumber);
             Assert.Equal("Review process", secondCitation.SectionTitle);
+            Assert.Equal("The policy requires review.", secondCitation.SourceText);
 
             var sourceDocument = await context.Documents.SingleAsync(document => document.Id == documentId);
             context.Documents.Remove(sourceDocument);
@@ -98,3 +105,4 @@ public sealed class ChatAnswerRepositoryTests
         }
     }
 }
+

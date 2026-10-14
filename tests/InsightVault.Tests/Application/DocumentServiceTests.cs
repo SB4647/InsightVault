@@ -88,7 +88,7 @@ public class DocumentServiceTests
             new StubUserLookupService(),
             new RecordingOutboxRepository());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.UploadAsync(
+        await Assert.ThrowsAsync<UploadQuotaExceededException>(() => service.UploadAsync(
             new UploadDocumentCommand(
                 "quota.pdf",
                 "application/pdf",
@@ -130,7 +130,7 @@ public class DocumentServiceTests
 
         blobStorage.AllowFirstUpload();
         await firstUpload;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => secondUpload);
+        await Assert.ThrowsAsync<UploadQuotaExceededException>(() => secondUpload);
         Assert.Single(repository.Documents);
     }
 
@@ -647,3 +647,4 @@ public class DocumentServiceTests
         }
     }
 }
+

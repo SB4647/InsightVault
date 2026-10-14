@@ -161,7 +161,7 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext)
         CancellationToken cancellationToken = default)
     {
         // SQL Server fallback while PostgreSQL + pgvector becomes the primary production path.
-        // Bound the database candidate scan before calculating cosine similarity in memory.
+        // Similarity must be calculated before limiting results; file-name ordering is not a relevance signal.
         var candidates = await (
             from document in dbContext.Documents.AsNoTracking()
             join chunk in dbContext.DocumentChunks.AsNoTracking() on document.Id equals chunk.DocumentId
@@ -172,9 +172,6 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext)
                           permission.DocumentId == document.Id
                           && permission.UserId == request.OwnerUserId))
             select new { document, chunk, embedding })
-            .OrderBy(candidate => candidate.document.OriginalFileName)
-            .ThenBy(candidate => candidate.chunk.ChunkIndex)
-            .Take(request.MaxResults)
             .ToListAsync(cancellationToken);
 
         return candidates
@@ -257,3 +254,4 @@ public sealed class DocumentRepository(ApplicationDbContext dbContext)
         return dotProduct / (Math.Sqrt(leftMagnitude) * Math.Sqrt(rightMagnitude));
     }
 }
+

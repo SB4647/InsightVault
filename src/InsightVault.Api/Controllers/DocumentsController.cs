@@ -61,6 +61,10 @@ public sealed class DocumentsController(
         {
             return BadRequest(ex.Message);
         }
+        catch (UploadQuotaExceededException ex)
+        {
+            return Conflict(ex.Message);
+        }
 
         return CreatedAtAction(
             nameof(GetDocuments),
@@ -145,3 +149,4 @@ public sealed class DocumentsController(
 
     public sealed record ShareDocumentRequest(string Email);
 }
+

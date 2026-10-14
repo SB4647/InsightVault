@@ -119,12 +119,12 @@ public sealed class DocumentService(
         var usage = await documentRepository.GetOwnedUsageAsync(command.OwnerUserId, cancellationToken);
         if (usage.DocumentCount >= _uploadQuotaOptions.MaxDocumentsPerOwner)
         {
-            throw new InvalidOperationException("Document upload quota has been reached for this user.");
+            throw new UploadQuotaExceededException("Document upload quota has been reached for this user.");
         }
 
         if (usage.StoredBytes > _uploadQuotaOptions.MaxStoredBytesPerOwner - command.SizeInBytes)
         {
-            throw new InvalidOperationException("Storage upload quota has been reached for this user.");
+            throw new UploadQuotaExceededException("Storage upload quota has been reached for this user.");
         }
     }
 
@@ -238,3 +238,4 @@ public sealed class DocumentService(
             isOwner ? "Owner" : "Viewer");
     }
 }
+

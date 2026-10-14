@@ -11,6 +11,8 @@ public sealed class ChatAnswerCitationConfiguration : IEntityTypeConfiguration<C
         builder.ToTable("ChatAnswerCitations");
         builder.HasKey(citation => citation.Id);
         builder.Property(citation => citation.DocumentVersion).IsRequired();
+        builder.Property(citation => citation.DocumentName).HasMaxLength(260).IsRequired();
+        builder.Property(citation => citation.SourceText).IsRequired();
         builder.Property(citation => citation.SourcePageNumber).IsRequired();
         builder.Property(citation => citation.SectionTitle).HasMaxLength(500);
         builder.Property(citation => citation.Score).HasPrecision(5, 4).IsRequired();
@@ -24,3 +26,4 @@ public sealed class ChatAnswerCitationConfiguration : IEntityTypeConfiguration<C
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
+

@@ -1,5 +1,6 @@
 using InsightVault.Domain.Entities;
 using InsightVault.Domain.Enums;
+using InsightVault.Application.Interfaces;
 using InsightVault.Application.ProcessingQueue;
 using InsightVault.Infrastructure.Identity;
 using InsightVault.Infrastructure.Persistence;
@@ -11,6 +12,26 @@ namespace InsightVault.Tests.Infrastructure;
 
 public sealed class DocumentRepositoryTests
 {
+    [Fact]
+    public async Task SearchAsync_RanksAllAuthorizedCandidatesBeforeApplyingTheResultLimit()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Users.Add(new ApplicationUser { Id = "user-1", UserName = "user@example.com", NormalizedUserName = "USER@EXAMPLE.COM", Email = "user@example.com", NormalizedEmail = "USER@EXAMPLE.COM", EmailConfirmed = true });
+        var alphabeticallyFirst = CreateProcessedDocument("alpha.pdf", "user-1", [1.0f, 0.0f]);
+        var mostRelevant = CreateProcessedDocument("zulu.pdf", "user-1", [0.0f, 1.0f]);
+        context.Documents.AddRange(alphabeticallyFirst, mostRelevant);
+        await context.SaveChangesAsync();
+
+        var match = Assert.Single(await new DocumentRepository(context).SearchAsync(
+            new VectorSearchRequest("user-1", [0.0f, 1.0f], 1, "relevant query")));
+
+        Assert.Equal(mostRelevant.Id, match.DocumentId);
+    }
+
     [Fact]
     public async Task OutboxRepository_PersistsAndListsPendingEntriesInCreationOrder()
     {
@@ -177,4 +198,23 @@ public sealed class DocumentRepositoryTests
             Assert.NotNull(chunk.Embedding);
         }
     }
+
+    private static Document CreateProcessedDocument(
+        string fileName,
+        string ownerUserId,
+        IReadOnlyList<float> embedding)
+    {
+        var document = Document.Create(
+            fileName,
+            "application/pdf",
+            256,
+            $"documents/{fileName}",
+            new DateTime(2026, 10, 14, 0, 0, 0, DateTimeKind.Utc),
+            ownerUserId);
+        var chunk = DocumentChunk.Create(document.Id, 0, $"Content from {fileName}");
+        chunk.SetEmbedding(embedding);
+        document.CompleteProcessing([chunk]);
+        return document;
+    }
 }
+
