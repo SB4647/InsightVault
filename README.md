@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/SB4647/InsightVault/actions/workflows/ci.yml/badge.svg)](https://github.com/SB4647/InsightVault/actions/workflows/ci.yml)
 
+<p align="center">
+  <img src="docs/screenshots/social-preview.png" alt="InsightVault — your documents, a clearer perspective" width="100%">
+</p>
+
 InsightVault is an AI-powered document intelligence application for uploading PDFs, processing their content, searching semantically, and asking grounded questions over a private document library.
 
 It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, Azure Blob Storage, an S3-compatible storage adapter, Azure OpenAI, Docker, Terraform, and GitHub Actions.
@@ -23,37 +27,31 @@ It is built as a portfolio-grade full-stack project using ASP.NET Core, React, S
 
 ## Screenshots
 
-The screenshots below show the main local workflow: authentication, processed document management, semantic search, and RAG chat with source citations.
+The screenshots below show the redesigned local workflow: authentication, document management, semantic search, and RAG chat with source citations. They use safe fixture responses so no private documents or paid model calls are included in the captures.
 
 ### Login
 
-![InsightVault login page](docs/screenshots/Log%20in%20page.png)
+![InsightVault login page](docs/screenshots/login.png)
 
-Local account login using JWT authentication.
+Focused account entry with the InsightVault sage identity and a clear private-workspace promise.
 
-### Main Page
+### Document Library
 
-![InsightVault main page](docs/screenshots/Main%20Page%20View.jpg)
+![InsightVault document library](docs/screenshots/library.png)
 
-Signed-in document workspace with upload, search, chat, and document management areas.
-
-### Uploaded Documents
-
-![Uploaded documents with processed status](docs/screenshots/Upload%20documents%20result.png)
-
-Uploaded PDF with processing status, chunk count, sharing, refresh, and delete actions.
+Signed-in command centre with real library totals, processing state, upload controls, and document actions.
 
 ### Semantic Search
 
-![Semantic search results](docs/screenshots/Semantic%20search%20result.png)
+![InsightVault semantic search results](docs/screenshots/search.png)
 
-Semantic search over processed document chunks with similarity scores.
+Meaning-based retrieval with page-aware evidence and explicitly labelled retrieval scores.
 
 ### RAG Chat
 
-![RAG chat answer with source citations](docs/screenshots/RAG%20chat%20result.png)
+![InsightVault grounded answer with source citations](docs/screenshots/chat.png)
 
-Grounded answer generated from retrieved document chunks, with cited sources shown below the response.
+Grounded answers and the supporting source passages shown together for easy verification.
 
 ## What It Does
 

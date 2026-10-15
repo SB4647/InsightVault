@@ -86,7 +86,7 @@ docker compose --profile postgres up -d postgres
 docker compose --profile postgres ps
 ```
 
-It exposes PostgreSQL on `localhost:5433` and uses the in-container name `postgres` on port `5432`. `src/InsightVault.Api/appsettings.Postgres.example.json` documents the `Database:Provider=Postgres` value and Docker connection string for the provider-aware persistence work. It is not active until that provider path is implemented, so the existing SQL Server setup remains unchanged.
+It exposes PostgreSQL on `localhost:5433` and uses the in-container name `postgres` on port `5432`. `src/InsightVault.Api/appsettings.Postgres.example.json` documents the `Database:Provider=Postgres` value and Docker connection string. Select that provider explicitly to use pgvector-backed retrieval; SQL Server remains the default local path.
 
 To remove the disposable PostgreSQL data deliberately:
 
