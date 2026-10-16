@@ -8,7 +8,7 @@
 
 InsightVault is an AI-powered document intelligence application for uploading PDFs, processing their content, searching semantically, and asking grounded questions over a private document library.
 
-It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, Azure Blob Storage, an S3-compatible storage adapter, Azure OpenAI, Docker, Terraform, and GitHub Actions.
+It is built as a portfolio-grade full-stack project using ASP.NET Core, React, SQL Server, PostgreSQL + pgvector, Azure Blob Storage, an S3-compatible storage adapter, Azure OpenAI, Docker, AWS-focused Terraform, and GitHub Actions.
 
 ## Highlights
 
@@ -21,8 +21,8 @@ It is built as a portfolio-grade full-stack project using ASP.NET Core, React, S
 - Clean Architecture project structure
 - Azure Blob Storage by default, with an S3-compatible document-storage adapter
 - Docker Compose local environment for API, worker, SQL Server, PostgreSQL, opt-in S3Mock, and LocalStack SQS
-- Terraform scaffold for low-cost Azure resource management and optional paid hosting
-- GitHub Actions CI for backend, frontend, Docker, and Terraform validation
+- AWS-focused Terraform design for ECS, RDS PostgreSQL, S3, SQS, and supporting infrastructure, disabled by default
+- GitHub Actions CI for API and worker builds, frontend checks, Docker image builds, Docker Compose validation, and Terraform validation
 - xUnit tests for Domain and Application behavior
 
 ## Screenshots
@@ -171,10 +171,10 @@ Dependency rules:
 ```mermaid
 flowchart LR
     Push["Push / Pull Request"]
-    Backend["Backend\nrestore, build, test"]
+    Backend["API + worker\nrestore, build, test"]
     Frontend["Frontend\nnpm ci, build, lint"]
-    Docker["Docker\nbuild API image"]
-    Terraform["Terraform\nfmt, init, validate"]
+    Docker["Docker\nbuild API, worker, client images\nand validate Compose"]
+    Terraform["Terraform\nfmt, init, validate\nAzure + AWS modules"]
 
     Push --> Backend
     Push --> Frontend
@@ -182,7 +182,7 @@ flowchart LR
     Push --> Terraform
 ```
 
-The CI pipeline is intentionally simple. It validates the application, frontend, Dockerfile, and Terraform configuration. It does not deploy or create paid Azure resources.
+The CI pipeline validates the API and worker, frontend, all application images, Docker Compose configurations, and Terraform modules. It does not authenticate to AWS, create infrastructure, publish images, or deploy the application. The separate AWS deployment workflow remains manual-only and requires a reviewed plan, protected GitHub Environment approval, and OIDC credentials.
 
 ### Optional Azure Deployment Path
 
@@ -635,7 +635,7 @@ See [docs/deployment.md](docs/deployment.md) for local, Docker, Terraform import
 
 ### AWS Production Design: Declared, Not Deployed
 
-The separate [AWS Terraform module](infra/aws/README.md) now defines a production-ready VPC, private ECS API/worker tasks, S3, SQS/DLQ, RDS PostgreSQL, CloudWatch, ECR, IAM, ALB/HTTPS, and separate development/staging/production configuration. Every committed environment keeps the master deployment switch off, so `terraform init -backend=false` and `terraform validate` are safe local checks. The manual GitHub workflow uses OIDC and a protected GitHub Environment; it does not deploy anything unless a human deliberately runs and approves it.
+The separate [AWS Terraform module](infra/aws/README.md) declares a production-oriented VPC, private ECS API/worker tasks, S3, SQS/DLQ, RDS PostgreSQL, CloudWatch, ECR, IAM, ALB/HTTPS, and separate development/staging/production configuration. It is not deployed and should not yet be described as production-ready: deployment credentials, protected GitHub Environments, image publishing, database migration release steps, DNS, and an operational runbook still require explicit setup and review. Every committed environment keeps the master deployment switch off, so `terraform init -backend=false` and `terraform validate` are safe local checks. The manual GitHub workflow uses OIDC and a protected GitHub Environment; it does not deploy anything unless a human deliberately runs and approves it.
 
 ### Step 7: Security and Cost Controls
 
@@ -653,10 +653,11 @@ The AWS Terraform module defines distinct least-privilege task roles and consume
 
 GitHub Actions validates:
 
-- Backend restore, build, and tests
+- API and worker restore and build, plus .NET tests
 - Frontend install, build, and lint
-- Docker API image build
-- Terraform formatting and validation
+- API, worker, and frontend Docker image builds
+- Default and AWS-aligned Docker Compose configuration
+- Azure and AWS Terraform formatting and validation
 
 ### Testing
 
