@@ -14,10 +14,13 @@ on:
         type: choice
         options: [validate, plan, apply]
         default: validate
+      confirmation:
+        description: "For apply only, type APPLY followed by the environment name (for example, APPLY production)"
+        required: false
+        type: string
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   validate:
@@ -33,10 +36,13 @@ jobs:
       - run: terraform validate
 
   plan:
-    if: inputs.operation == 'plan' || inputs.operation == 'apply'
+    if: (inputs.operation == 'plan' || inputs.operation == 'apply') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Plan environments have read-only AWS roles and no required reviewer. They never apply changes.
     environment: plan-${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: infra/aws
@@ -70,17 +76,38 @@ jobs:
           retention-days: 1
 
   apply:
-    if: inputs.operation == 'apply'
+    if: inputs.operation == 'apply' && github.ref == 'refs/heads/main'
     needs: plan
     runs-on: ubuntu-latest
-    # Configure required reviewers on development/staging/production GitHub Environments.
+    # Deployment environments provide the out-of-repository arming switch and OIDC boundary.
     environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: infra/aws
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
+      - name: Verify deliberate deployment intent
+        shell: bash
+        env:
+          DEPLOYMENT_ARMED: ${{ vars.DEPLOYMENT_ARMED }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+
+          if [ "$DEPLOYMENT_ARMED" != "true" ]; then
+            echo "::error::Deployment is disarmed. Set the DEPLOYMENT_ARMED variable to true in the selected GitHub Environment before deliberately retrying."
+            exit 1
+          fi
+
+          if [ "$CONFIRMATION" != "APPLY $TARGET_ENVIRONMENT" ]; then
+            echo "::error::Confirmation must be exactly: APPLY $TARGET_ENVIRONMENT"
+            exit 1
+          fi
       - name: Configure deployment AWS credentials through GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:

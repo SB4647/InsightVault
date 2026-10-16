@@ -28,11 +28,17 @@ jobs:
       - name: Restore API
         run: dotnet restore src/InsightVault.Api/InsightVault.Api.csproj
 
+      - name: Restore worker
+        run: dotnet restore src/InsightVault.Worker/InsightVault.Worker.csproj
+
       - name: Restore tests
         run: dotnet restore tests/InsightVault.Tests/InsightVault.Tests.csproj
 
       - name: Build API
         run: dotnet build src/InsightVault.Api/InsightVault.Api.csproj --configuration Release --no-restore
+
+      - name: Build worker
+        run: dotnet build src/InsightVault.Worker/InsightVault.Worker.csproj --configuration Release --no-restore
 
       - name: Run tests
         run: dotnet test tests/InsightVault.Tests/InsightVault.Tests.csproj --configuration Release --no-restore --verbosity normal
@@ -75,6 +81,26 @@ jobs:
 
       - name: Build API image
         run: docker build --file Dockerfile --tag insightvault-api:ci .
+
+      - name: Build worker image
+        run: docker build --file src/InsightVault.Worker/Dockerfile --tag insightvault-worker:ci .
+
+      - name: Build frontend image
+        run: docker build --file src/InsightVault.Client/Dockerfile --tag insightvault-client:ci .
+
+      - name: Validate default Compose configuration
+        run: docker compose -f docker-compose.yml config --quiet
+
+      - name: Validate AWS-aligned Compose profiles
+        run: >-
+          docker compose
+          -f docker-compose.yml
+          -f docker-compose.queue.yml
+          --profile frontend
+          --profile postgres
+          --profile s3
+          --profile queue
+          config --quiet
 
   terraform:
     name: Terraform
