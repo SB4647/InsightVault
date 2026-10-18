@@ -135,8 +135,10 @@ untrusted content. Preserve application document access checks, RAG injection
 defences and redacted logs. Inspect dependency and workflow changes explicitly.
 
 Repository rulesets and branch protection are settings outside these files.
-Their enforcement could not be verified during initial inspection because the
-branch-protection API returned `401 Requires authentication`. A maintainer should
+Authenticated inspection on 18 October 2026 found no repository rulesets, and
+the `main` branch-protection endpoint returned `404 Branch not protected`. Review
+and successful checks are therefore conventions, not enforced merge requirements.
+A maintainer should
 configure required PRs and checks named Backend, Frontend, Docker, Terraform,
 AWS Terraform validation, Agent configuration and Dependency review. The latter
 runs only on PRs. Restrict direct pushes and bypass rights as appropriate.
@@ -216,5 +218,6 @@ Definitions were checked against GitHub documentation on 18 October 2026:
 - No application source was changed; no interactive UI or Copilot-session
   verification was performed. Configuration validation cannot establish agent
   quality or production readiness.
-- GitHub CLI authentication was invalid locally. Remote CI, dependency-review
-  execution and merge-rule configuration could not be verified for this change.
+- Sandboxed GitHub authentication initially failed; using the existing keyring
+  outside the sandbox succeeded and allowed the merge-rule inspection above.
+  Local checks do not establish a successful hosted CI/dependency-review run.
