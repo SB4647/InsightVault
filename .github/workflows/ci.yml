@@ -12,6 +12,29 @@ permissions:
   contents: read
 
 jobs:
+  agent-configuration:
+    name: Agent configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install validation dependency
+        run: python -m pip install PyYAML==6.0.3
+      - name: Validate agent profiles and YAML frontmatter
+        run: python .github/scripts/validate-agents.py
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
   backend:
     name: Backend
     runs-on: ubuntu-latest

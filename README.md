@@ -182,7 +182,11 @@ flowchart LR
     Push --> Terraform
 ```
 
-The CI pipeline validates the API and worker, frontend, all application images, Docker Compose configurations, and Terraform modules. It does not authenticate to AWS, create infrastructure, publish images, or deploy the application. The separate AWS deployment workflow remains manual-only and requires a reviewed plan, protected GitHub Environment approval, and OIDC credentials.
+The CI pipeline validates the API and worker, frontend, all application images, Docker Compose configurations, Terraform modules, and Copilot agent profiles. Pull requests also receive dependency review for newly introduced high/critical vulnerabilities. It does not authenticate to AWS, create infrastructure, publish images, or deploy the application. The separate AWS workflow is manual-only, restricted to `main`, and checks an external environment arming variable and typed confirmation before acquiring apply credentials through OIDC. An armed apply run proceeds after planning; it does not enforce a separate human plan-review pause.
+
+### AI-Assisted Development
+
+InsightVault defines Architect, Developer and DevOps Copilot profiles with explicit tool access and shared repository instructions. Humans approve plans, transfer context between agents, review results and merge changes. The profiles do not automate that sequence. See [Agentic development](docs/agentic-development.md) for invocation, quality gates, governance limitations and an illustrative worked example.
 
 ### Optional Azure Deployment Path
 
