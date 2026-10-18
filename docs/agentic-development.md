@@ -220,4 +220,8 @@ Definitions were checked against GitHub documentation on 18 October 2026:
   quality or production readiness.
 - Sandboxed GitHub authentication initially failed; using the existing keyring
   outside the sandbox succeeded and allowed the merge-rule inspection above.
-  Local checks do not establish a successful hosted CI/dependency-review run.
+- [Hosted CI run 39107601476](https://github.com/SB4647/InsightVault/actions/runs/39107601476)
+  passed all seven jobs, including the complete backend suite and Docker builds.
+  Dependency review initially failed because dependency graph was disabled. The
+  repository's dependency graph was enabled in GitHub settings and the failed
+  job passed on retry. This setting is external to the checked-in workflow.
